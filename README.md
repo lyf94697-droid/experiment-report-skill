@@ -3,8 +3,8 @@
 > 面向中文大学实验报告 / 课程设计报告的通用 Skill + PowerShell 本地流水线。
 > 支持 Codex、OpenClaw 和本地 Web UI，把“实验题目、教程链接、正文、学校模板、截图证据、版式检查”收成一条可复查、可复用、可交付的 `docx` 生成链路。
 
-[![Quality Checks](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/quality.yml/badge.svg)](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/quality.yml)
-[![Smoke Tests](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/smoke-tests.yml)
+[![Quality Checks](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/quality.yml/badge.svg)](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/quality.yml)
+[![Smoke Tests](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/smoke-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## 项目定位
