@@ -1,6 +1,6 @@
 ---
 name: experiment-report
-description: Write Chinese university lab reports and course-design reports, or fit report content into a user-provided WPS, Word, or docx blank template. Use when the user asks for an experiment report, lab report, course design report, experiment summary, or a WPS, Word, or docx template to be filled from experiment topic, requirements, code, data, screenshots, tutorial pages, or results.
+description: Write Chinese university lab reports and course-design reports, or fit report content into WPS, Word, or docx templates. Use in Codex, OpenClaw, or other local agent workflows when the user asks for an experiment report, lab report, course design report, experiment summary, screenshot insertion, captions, PDF preview, or template filling from topics, requirements, code, data, tutorial pages, screenshots, or results.
 ---
 
 ## When this skill applies
@@ -90,7 +90,7 @@ description: Write Chinese university lab reports and course-design reports, or 
 - For local screenshots or experiment photos that should be embedded into the filled docx, prefer `scripts/generate-docx-image-map.ps1` first and then run `scripts/insert-docx-images.ps1` on the already-filled copy.
 - For a cleaner formatted docx copy, optionally run `scripts/format-docx-report-style.ps1` after filling fields and inserting images.
 - For chat-driven local execution, prefer `scripts/build-report-from-feishu.ps1` so the wrapper can keep the final deliverable in the output root and move intermediate files into an `artifacts/` subdirectory.
-- The image pipeline can resolve OpenClaw-staged relative attachment paths such as `media/inbound/example.png`, so when those paths appear in prompt-injected media notes you can reuse them directly in `-ImagePaths`.
+- The image pipeline can resolve staged relative attachment paths such as `media/inbound/example.png` from OpenClaw-style prompts; when those paths appear in prompt-injected media notes, reuse them directly in `-ImagePaths`.
 - When the template has fixed section headings plus blank paragraphs, prefer block mappings over flattening long body content into a single field.
 - For public tutorial pages, prefer `scripts/fetch-web-article.ps1`; keep `scripts/fetch-csdn-article.ps1` as the compatibility wrapper for CSDN-specific workflows.
 - When a tutorial page should flow directly into report generation, prefer `scripts/prepare-report-prompt.ps1` so the extracted reference text is appended to the final request deterministically.

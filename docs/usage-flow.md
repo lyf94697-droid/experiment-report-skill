@@ -12,7 +12,7 @@
 
 2. 生成或准备报告正文
    - 已经有正文时，直接把正文放进 `ReportPath`
-   - 只有教程链接和要求时，先通过 OpenClaw 生成正文，再进入模板填充
+   - 只有教程链接和要求时，可用 Codex 直接整理正文；如需自动长文通道，也可以通过可选 OpenClaw 流程生成正文后再进入模板填充
    - 需要避免照抄参考文章时，按 [CSDN 参考内容如何避免照抄](csdn-reference-policy.md) 处理
 
 3. 填充学校模板
@@ -87,7 +87,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-url.ps1 `
   -OutputDir "E:\reports\final-output"
 ```
 
-这条路径需要 OpenClaw 和浏览器 profile 可用。教程链接只作为参考材料，真实结果必须来自你的截图、命令输出或明确提供的数据。
+这条路径属于可选智能长文通道，需要 OpenClaw 和浏览器 profile 可用。教程链接只作为参考材料，真实结果必须来自你的截图、命令输出或明确提供的数据。稳定使用时，也可以先准备正文再走 `build-report.ps1`。
 
 ## 课程设计报告
 

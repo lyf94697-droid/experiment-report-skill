@@ -30,6 +30,7 @@ Fill these fields:
 - 生成方式
 - 正文长度
 - 课程名称
+- 常用学生资料
 - 学生姓名
 - 学号
 - 班级
@@ -47,6 +48,8 @@ Upload:
 - one or more code files
 
 If no template is uploaded, experiment reports use `E:\实验报告\00-模板\实验报告模版1.docx` when available. Course-design reports use `E:\新建文件夹\课程设计-模板.doc` when available.
+
+The student profile dropdown starts with `李亦非 / 2444100198 / 24C`. Course name, experiment name, student name, ID, class, and output root are editable dropdowns: click them to pick local history, or type a new value. Successful generations update `outputs/web-ui/web-ui-history.json` for the next session.
 
 The chat-style box can accept text like:
 
@@ -89,6 +92,7 @@ outputs/web-ui/
 
 ## Notes
 
+- `快速本地草稿` is the default mode for stable everyday runs.
 - `智能长文（接近对话效果）` uses the local OpenClaw chat gateway when available.
 - If the chat gateway is unavailable, the UI falls back to `快速本地草稿` and shows the reason in the warning box.
 - PDF export requires WPS, Microsoft Word, or LibreOffice. Preview PNG rendering uses PyMuPDF.

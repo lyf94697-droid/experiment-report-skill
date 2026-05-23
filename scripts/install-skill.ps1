@@ -1,10 +1,15 @@
-﻿[CmdletBinding(SupportsShouldProcess = $true)]
+[CmdletBinding(SupportsShouldProcess = $true)]
 param(
+  [string]$CodexHome = $env:CODEX_HOME,
+
   [string]$AgentsHome = $env:AGENTS_HOME,
 
   [string]$OpenClawHome = $env:OPENCLAW_HOME,
 
   [string]$TargetDir,
+
+  [ValidateSet("auto", "codex", "openclaw", "agents")]
+  [string]$Platform = "auto",
 
   [switch]$Force
 )
@@ -72,13 +77,29 @@ function Get-BackupDirectory {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if ([string]::IsNullOrWhiteSpace($TargetDir)) {
-  if (-not [string]::IsNullOrWhiteSpace($AgentsHome)) {
-    $TargetDir = Join-Path (Join-Path $AgentsHome "skills") "experiment-report"
-  } elseif (-not [string]::IsNullOrWhiteSpace($OpenClawHome)) {
-    # Backward-compatible fallback for older local layouts.
-    $TargetDir = Join-Path (Join-Path $OpenClawHome "skills") "experiment-report"
-  } else {
-    $TargetDir = Join-Path (Join-Path (Join-Path $HOME ".agents") "skills") "experiment-report"
+  $skillName = "experiment-report"
+  switch ($Platform) {
+    "codex" {
+      $codexRoot = if ([string]::IsNullOrWhiteSpace($CodexHome)) { Join-Path $HOME ".codex" } else { $CodexHome }
+      $TargetDir = Join-Path (Join-Path $codexRoot "skills") $skillName
+    }
+    "openclaw" {
+      if (-not [string]::IsNullOrWhiteSpace($AgentsHome)) {
+        $TargetDir = Join-Path (Join-Path $AgentsHome "skills") $skillName
+      } elseif (-not [string]::IsNullOrWhiteSpace($OpenClawHome)) {
+        $TargetDir = Join-Path (Join-Path $OpenClawHome "skills") $skillName
+      } else {
+        $TargetDir = Join-Path (Join-Path (Join-Path $HOME ".agents") "skills") $skillName
+      }
+    }
+    "agents" {
+      $agentsRoot = if ([string]::IsNullOrWhiteSpace($AgentsHome)) { Join-Path $HOME ".agents" } else { $AgentsHome }
+      $TargetDir = Join-Path (Join-Path $agentsRoot "skills") $skillName
+    }
+    default {
+      $codexRoot = if ([string]::IsNullOrWhiteSpace($CodexHome)) { Join-Path $HOME ".codex" } else { $CodexHome }
+      $TargetDir = Join-Path (Join-Path $codexRoot "skills") $skillName
+    }
   }
 }
 

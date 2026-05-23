@@ -7,12 +7,13 @@
 推荐仓库描述：
 
 ```text
-OpenClaw skill + PowerShell pipeline for Chinese lab reports: generate report bodies, fill docx templates, insert screenshots, and run layout checks.
+Codex/OpenClaw compatible Skill + PowerShell pipeline for Chinese lab reports: generate report bodies, fill docx templates, insert screenshots, and run layout checks.
 ```
 
 推荐 topics：
 
 ```text
+codex
 openclaw
 skill
 powershell

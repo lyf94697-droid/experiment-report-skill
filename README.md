@@ -1,7 +1,7 @@
-# OpenClaw Experiment Report Skill
+# Experiment Report Skill
 
-> 面向中文大学实验报告 / 课程设计报告的 OpenClaw skill + PowerShell 本地流水线。  
-> 把“实验题目、教程链接、正文、学校模板、截图证据、版式检查”收成一条可复查、可复用、可交付的 `docx` 生成链路。
+> 面向中文大学实验报告 / 课程设计报告的通用 Skill + PowerShell 本地流水线。
+> 支持 Codex、OpenClaw 和本地 Web UI，把“实验题目、教程链接、正文、学校模板、截图证据、版式检查”收成一条可复查、可复用、可交付的 `docx` 生成链路。
 
 [![Quality Checks](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/quality.yml/badge.svg)](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/quality.yml)
 [![Smoke Tests](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/lyf94697-droid/openclaw-experiment-report-skill/actions/workflows/smoke-tests.yml)
@@ -9,7 +9,7 @@
 
 ## 项目定位
 
-这个仓库不是“万能文档生成器”，而是一个把中文大学实验报告场景做深、做稳的开源项目：
+这个仓库不是“万能文档生成器”，而是一个把中文大学实验报告场景做深、做稳的通用 Skill 项目：
 
 - 先生成或接收结构化中文报告正文
 - 再把正文和基础信息填进 `docx` / Word / WPS 模板
@@ -50,10 +50,12 @@
 powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 ```
 
-安装完成后可以在 OpenClaw 中确认：
+默认安装到 Codex 的本地 skill 目录：`$HOME\.codex\skills\experiment-report`。安装后新开一个 Codex 会话，提到“实验报告 / 课程设计报告 / 模板填充”时即可触发。
+
+如果还要给 OpenClaw 使用，可以安装到兼容的 agents/OpenClaw 目录：
 
 ```powershell
-openclaw skills list
+powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1 -Platform openclaw -Force
 ```
 
 ### 2. 跑一键演示
@@ -181,7 +183,7 @@ tests-output/network-dos-case/
 - 从 CSDN 或公开教程生成正文时，参考内容只提供背景和流程，结果必须以用户真实截图和数据为准
 - 这个项目能降低照抄风险，但不能自动保证学术合规；提交前仍需使用者复核
 - 图像插入依赖本地图片路径可访问，截图模糊或信息不足时不能凭空补细节
-- `build-report-from-url.ps1` 需要 OpenClaw CLI 和浏览器 profile 可用
+- `build-report-from-url.ps1` 属于可选智能长文通道，需要 OpenClaw CLI 和浏览器 profile 可用；稳定主线不依赖它
 - Word / WPS GUI 自动操作不是主路径；项目优先生成可检查的 `docx` 文件
 
 后续方向见 [ROADMAP.md](ROADMAP.md)。
@@ -189,14 +191,14 @@ tests-output/network-dos-case/
 ## 仓库目录
 
 ```text
-openclaw-experiment-report-skill/
+experiment-report-skill/
 ├─ demo/                  GitHub / 小红书 / 抖音友好的演示素材
 ├─ docs/                  使用流程、模板机制、CSDN 改写、截图证据等文档
 ├─ examples/              典型案例、样例正文、JSON、Prompt、模板
 ├─ profiles/              报告 profile 定义
 ├─ references/            skill 运行时参考规则
 ├─ scripts/               主流程脚本、辅助脚本和检查脚本
-├─ agents/                OpenClaw agent 配置
+├─ agents/                Codex / OpenClaw UI 元数据
 ├─ SKILL.md               skill 主说明
 └─ README.md              项目首页
 ```
@@ -241,7 +243,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-one-click-demo.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\run-smoke-tests.ps1
 ```
 
-本地 OpenClaw 环境检查：
+可选 OpenClaw 智能通道检查：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\self-check.ps1
@@ -263,6 +265,8 @@ The repository includes a Gradio UI for local report generation. It supports the
 
 If no template is uploaded, the experiment-report mode uses `E:\实验报告\00-模板\实验报告模版1.docx` when it exists. The course-design mode uses `E:\新建文件夹\课程设计-模板.doc` when it exists.
 
+Common fields include local history suggestions, including course name, experiment name, student info, and output root. The UI ships with `李亦非 / 2444100198 / 24C` as the default student profile, and successful generations are saved to `outputs/web-ui/web-ui-history.json` so the next session can pick them from the dropdowns.
+
 Install the optional UI dependencies:
 
 ```powershell
@@ -281,7 +285,7 @@ Then open:
 http://127.0.0.1:7860
 ```
 
-The page returns download buttons for DOCX, PDF, and a preview PNG, and it also displays the preview image in the page after generation. The default generation mode tries the local OpenClaw chat gateway for a longer, more polished body; if that is unavailable, it falls back to a deterministic local draft and keeps the warning in the UI. See [examples/web_demo.md](examples/web_demo.md).
+The page returns download buttons for DOCX, PDF, and a preview PNG, and it also displays the preview image in the page after generation. The default generation mode uses the faster local draft path for stable everyday runs. The smart long-form mode is still available when the local OpenClaw chat gateway is working; if it fails, the UI falls back to the local draft and keeps the warning in the UI. See [examples/web_demo.md](examples/web_demo.md).
 
 ## License
 

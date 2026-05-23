@@ -22,6 +22,7 @@ except ImportError as exc:  # pragma: no cover - shown only when the optional UI
 
 REPO_ROOT = Path(__file__).resolve().parent
 WEB_OUTPUT_ROOT = REPO_ROOT / "outputs" / "web-ui"
+HISTORY_PATH = WEB_OUTPUT_ROOT / "web-ui-history.json"
 DEFAULT_EXPERIMENT_TEMPLATE = Path(r"E:\实验报告\00-模板\实验报告模版1.docx")
 DEFAULT_COURSE_DESIGN_TEMPLATE = Path(r"E:\新建文件夹\课程设计-模板.doc")
 DEFAULT_DELIVERY_ROOT = Path(r"E:\实验报告")
@@ -68,6 +69,23 @@ AUTO_TITLE_VALUES = {
     "自动填充",
     "自动识别",
     "按教程填写",
+}
+HISTORY_LIMIT = 30
+DEFAULT_STUDENT_PROFILE = {
+    "student_name": "李亦非",
+    "student_id": "2444100198",
+    "class_name": "24C",
+}
+DEFAULT_WEB_UI_HISTORY = {
+    "student_profiles": [DEFAULT_STUDENT_PROFILE],
+    "student_names": ["李亦非"],
+    "student_ids": ["2444100198"],
+    "class_names": ["24C"],
+    "course_names": ["计算机网络"],
+    "experiment_names": ["根据教程链接填充"],
+    "screenshot_paths": [r"E:\实验报告\截图\计网实验六"],
+    "code_paths": [],
+    "output_roots": [str(DEFAULT_DELIVERY_ROOT)],
 }
 
 
@@ -244,6 +262,122 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8-sig")
 
 
+def _dedupe_text_values(values: list[Any], limit: int = HISTORY_LIMIT) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        deduped.append(text)
+        if len(deduped) >= limit:
+            break
+    return deduped
+
+
+def _normalize_student_profile(profile: Any) -> dict[str, str] | None:
+    if not isinstance(profile, dict):
+        return None
+    student_name = str(profile.get("student_name") or "").strip()
+    student_id = str(profile.get("student_id") or "").strip()
+    class_name = str(profile.get("class_name") or "").strip()
+    if not student_name and not student_id and not class_name:
+        return None
+    return {
+        "student_name": student_name,
+        "student_id": student_id,
+        "class_name": class_name,
+    }
+
+
+def _dedupe_student_profiles(values: list[Any], limit: int = HISTORY_LIMIT) -> list[dict[str, str]]:
+    profiles: list[dict[str, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for value in values:
+        profile = _normalize_student_profile(value)
+        if profile is None:
+            continue
+        key = (profile["student_name"], profile["student_id"], profile["class_name"])
+        if key in seen:
+            continue
+        seen.add(key)
+        profiles.append(profile)
+        if len(profiles) >= limit:
+            break
+    return profiles
+
+
+def load_web_ui_history() -> dict[str, Any]:
+    loaded: dict[str, Any] = {}
+    if HISTORY_PATH.exists():
+        try:
+            loaded = json.loads(HISTORY_PATH.read_text(encoding="utf-8-sig"))
+        except (OSError, json.JSONDecodeError):
+            loaded = {}
+
+    history: dict[str, Any] = {}
+    for key, defaults in DEFAULT_WEB_UI_HISTORY.items():
+        if key == "student_profiles":
+            history[key] = _dedupe_student_profiles(
+                list(defaults) + list(loaded.get(key, [])),
+                limit=HISTORY_LIMIT,
+            )
+        else:
+            history[key] = _dedupe_text_values(
+                list(defaults) + list(loaded.get(key, [])),
+                limit=HISTORY_LIMIT,
+            )
+    return history
+
+
+def save_web_ui_history(values: dict[str, str]) -> None:
+    current = load_web_ui_history()
+    new_profile = {
+        "student_name": values.get("student_name", ""),
+        "student_id": values.get("student_id", ""),
+        "class_name": values.get("class_name", ""),
+    }
+    current["student_profiles"] = _dedupe_student_profiles(
+        [new_profile] + list(current.get("student_profiles", [])),
+        limit=HISTORY_LIMIT,
+    )
+
+    field_map = {
+        "student_names": "student_name",
+        "student_ids": "student_id",
+        "class_names": "class_name",
+        "course_names": "course_name",
+        "experiment_names": "experiment_name",
+        "screenshot_paths": "screenshot_path_text",
+        "code_paths": "code_path_text",
+        "output_roots": "output_root",
+    }
+    for history_key, value_key in field_map.items():
+        current[history_key] = _dedupe_text_values(
+            [values.get(value_key, "")] + list(current.get(history_key, [])),
+            limit=HISTORY_LIMIT,
+        )
+
+    write_json(HISTORY_PATH, current)
+
+
+def student_profile_label(profile: dict[str, str]) -> str:
+    parts = [
+        profile.get("student_name", "").strip(),
+        profile.get("student_id", "").strip(),
+        profile.get("class_name", "").strip(),
+    ]
+    return " / ".join(part for part in parts if part) or "空资料"
+
+
+def apply_student_profile(profile_label: str) -> tuple[str, str, str]:
+    for profile in load_web_ui_history().get("student_profiles", []):
+        if student_profile_label(profile) == str(profile_label or "").strip():
+            return profile["student_name"], profile["student_id"], profile["class_name"]
+    return "", "", ""
+
+
 def write_failure_log(output_dir: Path, command: list[str], stdout: str, stderr: str) -> Path:
     log_dir = output_dir / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -262,6 +396,59 @@ def write_failure_log(output_dir: Path, command: list[str], stdout: str, stderr:
     )
     log_path.write_text(log_text, encoding="utf-8")
     return log_path
+
+
+def write_smart_runner(output_dir: Path, payload: dict[str, Any]) -> tuple[Path, Path]:
+    args_path = output_dir / "smart-runner-args.json"
+    runner_path = output_dir / "run-smart-pipeline.ps1"
+    write_json(args_path, payload)
+    runner_path.write_text(
+        r'''
+[CmdletBinding()]
+param(
+  [Parameter(Mandatory = $true)]
+  [string]$ArgsJson
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+$payload = Get-Content -LiteralPath $ArgsJson -Raw -Encoding UTF8 | ConvertFrom-Json
+$params = @{
+  TemplatePath = [string]$payload.TemplatePath
+  PromptPath = [string]$payload.PromptPath
+  CourseName = [string]$payload.CourseName
+  ExperimentName = [string]$payload.ExperimentName
+  StudentName = [string]$payload.StudentName
+  StudentId = [string]$payload.StudentId
+  ClassName = [string]$payload.ClassName
+  ReportProfileName = [string]$payload.ReportProfileName
+  OutputDir = [string]$payload.OutputDir
+  FinalDocxPath = [string]$payload.FinalDocxPath
+  PipelineMode = [string]$payload.PipelineMode
+  StyleProfile = [string]$payload.StyleProfile
+  DetailLevel = [string]$payload.DetailLevel
+}
+
+if ([bool]$payload.CreateTemplateFrameDocx) {
+  $params.CreateTemplateFrameDocx = $true
+}
+
+$referenceTextPaths = @($payload.ReferenceTextPaths | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($referenceTextPaths.Count -gt 0) {
+  $params.ReferenceTextPaths = $referenceTextPaths
+}
+
+$imagePaths = @($payload.ImagePaths | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+if ($imagePaths.Count -gt 0) {
+  $params.ImagePaths = $imagePaths
+}
+
+& ([string]$payload.ScriptPath) @params
+'''.lstrip(),
+        encoding="utf-8-sig",
+    )
+    return runner_path, args_path
 
 
 def run_command(command: list[str], cwd: Path, timeout: int) -> subprocess.CompletedProcess[str]:
@@ -627,15 +814,57 @@ def build_prompt_text(
 """
 
 
-def read_reference_excerpt(reference_paths: list[Path], max_chars: int = 4500) -> str:
+def clean_reference_excerpt_for_report(text: str, max_chars: int) -> str:
+    skipped_exact = {
+        "文章目录",
+        "摘要",
+        "适用对象",
+        "实验目的",
+        "实验环境",
+        "实验原理",
+        "实验步骤",
+        "实验过程",
+        "实验结果",
+        "问题分析",
+        "结果分析",
+        "实验总结",
+        "任务要求",
+    }
+    kept: list[str] = []
+    total = 0
+    for raw_line in text.splitlines():
+        line = html.unescape(raw_line).strip()
+        if not line or line in skipped_exact:
+            continue
+        if re.match(r"^\d+(\.\d+)*\s*(实验目的|实验环境|实验原理|实验步骤|实验过程|实验结果|问题分析|结果分析|实验总结|任务要求)\s*$", line):
+            continue
+        if re.match(r"^(上一篇|下一篇|版权声明|目录|返回顶部|收藏|点赞|评论)\b", line):
+            continue
+        if len(line) < 8 and re.match(r"^\d+(\.\d+)*\s+", line):
+            continue
+        normalized = f"- {line}"
+        if total + len(normalized) > max_chars:
+            break
+        kept.append(normalized)
+        total += len(normalized)
+        if len(kept) >= 28:
+            break
+    return "\n".join(kept).strip()
+
+
+def read_reference_excerpt(reference_paths: list[Path], max_chars: int = 2600) -> str:
     excerpts: list[str] = []
     budget = max_chars
     for path in reference_paths:
         if budget <= 0:
             break
-        text = read_text_file(path, max_chars=min(1800, budget))
-        excerpts.append(f"{path.name}\n{text}")
-        budget -= len(text)
+        text = read_text_file(path, max_chars=min(5000, budget * 2))
+        cleaned = clean_reference_excerpt_for_report(text, max_chars=min(1200, budget))
+        if not cleaned:
+            continue
+        excerpt = f"{path.name}\n{cleaned}"
+        excerpts.append(excerpt)
+        budget -= len(excerpt)
     return "\n\n".join(excerpts).strip() or "未提取到参考网页正文。"
 
 
@@ -890,7 +1119,7 @@ def run_smart_pipeline(
     template_path: Path,
     report_profile: str,
     detail_level: str,
-    prompt_text: str,
+    prompt_path: Path,
     reference_paths: list[Path],
     screenshot_paths: list[Path],
     student_name: str,
@@ -902,48 +1131,38 @@ def run_smart_pipeline(
     powershell = resolve_powershell_executable()
     pipeline_dir = output_dir / "pipeline-smart"
     final_docx_path = output_dir / f"{make_base_name(student_id, student_name, experiment_name)}-智能版.docx"
+    runner_path, args_path = write_smart_runner(
+        output_dir,
+        {
+            "ScriptPath": str(REPO_ROOT / "scripts" / "build-report-from-url.ps1"),
+            "TemplatePath": str(template_path),
+            "PromptPath": str(prompt_path),
+            "CourseName": course_name,
+            "ExperimentName": experiment_name,
+            "StudentName": student_name,
+            "StudentId": student_id,
+            "ClassName": class_name,
+            "ReportProfileName": report_profile,
+            "OutputDir": str(pipeline_dir),
+            "FinalDocxPath": str(final_docx_path),
+            "PipelineMode": "fast",
+            "StyleProfile": "excellent",
+            "DetailLevel": detail_level,
+            "CreateTemplateFrameDocx": report_profile == "experiment-report",
+            "ReferenceTextPaths": [str(path) for path in reference_paths],
+            "ImagePaths": [str(path) for path in screenshot_paths],
+        },
+    )
     command = [
         powershell,
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        str(REPO_ROOT / "scripts" / "build-report-from-url.ps1"),
-        "-TemplatePath",
-        str(template_path),
-        "-PromptText",
-        prompt_text,
-        "-CourseName",
-        course_name,
-        "-ExperimentName",
-        experiment_name,
-        "-StudentName",
-        student_name,
-        "-StudentId",
-        student_id,
-        "-ClassName",
-        class_name,
-        "-ReportProfileName",
-        report_profile,
-        "-OutputDir",
-        str(pipeline_dir),
-        "-FinalDocxPath",
-        str(final_docx_path),
-        "-PipelineMode",
-        "fast",
-        "-StyleProfile",
-        "excellent",
-        "-DetailLevel",
-        detail_level,
+        str(runner_path),
+        "-ArgsJson",
+        str(args_path),
     ]
-    if report_profile == "experiment-report":
-        command.append("-CreateTemplateFrameDocx")
-    if reference_paths:
-        command.append("-ReferenceTextPaths")
-        command.extend(str(path) for path in reference_paths)
-    if screenshot_paths:
-        command.append("-ImagePaths")
-        command.extend(str(path) for path in screenshot_paths)
 
     result = run_command(command, cwd=REPO_ROOT, timeout=SMART_GENERATION_TIMEOUT)
     if result.returncode != 0:
@@ -1247,6 +1466,14 @@ def generate_report(
     code_files: Any,
 ) -> tuple[str, str, str | None, str | None, str | None, str | None]:
     warnings: list[str] = []
+    generation_mode = str(generation_mode or "")
+    detail_level_label = str(detail_level_label or "")
+    output_root = str(output_root or "")
+    requirement_text = str(requirement_text or "")
+    reference_links = str(reference_links or "")
+    chat_request_text = str(chat_request_text or "")
+    screenshot_path_text = str(screenshot_path_text or "")
+    code_path_text = str(code_path_text or "")
     parsed_request = parse_chat_request(chat_request_text or "")
     report_type = first_nonempty(parsed_request.get("report_type", ""), report_type)
     course_name = first_nonempty(course_name, parsed_request.get("course_name", ""))
@@ -1335,6 +1562,21 @@ def generate_report(
         warnings.append(f"实验名称已自动处理为：{experiment_name}")
     experiment_name = experiment_name.strip()
     base_name = make_base_name(student_id, student_name, experiment_name)
+    try:
+        save_web_ui_history(
+            {
+                "student_name": student_name.strip(),
+                "student_id": student_id.strip(),
+                "class_name": class_name.strip(),
+                "course_name": course_name.strip(),
+                "experiment_name": experiment_name.strip(),
+                "screenshot_path_text": screenshot_path_text.strip(),
+                "code_path_text": code_path_text.strip(),
+                "output_root": output_root.strip(),
+            }
+        )
+    except OSError as exc:
+        warnings.append(f"历史记录保存失败：{exc}")
 
     prompt_text = build_prompt_text(
         report_type=report_type,
@@ -1347,7 +1589,8 @@ def generate_report(
         code_paths=copied_code_files,
         detail_level=detail_level,
     )
-    (output_dir / "prompt-for-smart-generation.txt").write_text(prompt_text, encoding="utf-8-sig")
+    prompt_path = output_dir / "prompt-for-smart-generation.txt"
+    prompt_path.write_text(prompt_text, encoding="utf-8-sig")
 
     summary: dict[str, Any]
     summary_path: Path
@@ -1360,7 +1603,7 @@ def generate_report(
                 template_path=copied_template,
                 report_profile=report_profile,
                 detail_level=detail_level,
-                prompt_text=prompt_text,
+                prompt_path=prompt_path,
                 reference_paths=reference_paths,
                 screenshot_paths=copied_screenshots,
                 student_name=student_name.strip(),
@@ -1372,25 +1615,29 @@ def generate_report(
             generation_used = "智能长文"
         except Exception as exc:
             warnings.append(str(exc))
-            summary, summary_path = run_local_pipeline(
-                output_dir=output_dir,
-                template_path=copied_template,
-                report_profile=report_profile,
-                report_type=report_type,
-                detail_level=detail_level,
-                course_name=course_name.strip(),
-                experiment_name=experiment_name.strip(),
-                student_name=student_name.strip(),
-                student_id=student_id.strip(),
-                class_name=class_name.strip(),
-                requirement_text=effective_requirement_text,
-                reference_urls=reference_urls,
-                reference_notes=reference_notes,
-                reference_paths=reference_paths,
-                screenshot_paths=copied_screenshots,
-                code_paths=copied_code_files,
-            )
-            generation_used = "智能失败后回退本地草稿"
+            try:
+                summary, summary_path = run_local_pipeline(
+                    output_dir=output_dir,
+                    template_path=copied_template,
+                    report_profile=report_profile,
+                    report_type=report_type,
+                    detail_level=detail_level,
+                    course_name=course_name.strip(),
+                    experiment_name=experiment_name.strip(),
+                    student_name=student_name.strip(),
+                    student_id=student_id.strip(),
+                    class_name=class_name.strip(),
+                    requirement_text=effective_requirement_text,
+                    reference_urls=reference_urls,
+                    reference_notes=reference_notes,
+                    reference_paths=reference_paths,
+                    screenshot_paths=copied_screenshots,
+                    code_paths=copied_code_files,
+                )
+                generation_used = "智能失败后回退本地草稿"
+            except Exception as fallback_exc:
+                warnings.append(str(fallback_exc))
+                return "生成失败", "\n".join(dict.fromkeys(line for line in warnings if line.strip())), None, None, None, None
     else:
         try:
             summary, summary_path = run_local_pipeline(
@@ -1455,6 +1702,9 @@ def generate_report(
 
 
 def create_app() -> gr.Blocks:
+    history = load_web_ui_history()
+    student_profile_choices = [student_profile_label(profile) for profile in history["student_profiles"]]
+
     with gr.Blocks(title="实验报告生成 Web UI") as app:
         gr.Markdown("# 实验报告生成 Web UI")
 
@@ -1467,7 +1717,7 @@ def create_app() -> gr.Blocks:
             generation_mode = gr.Radio(
                 label="生成方式",
                 choices=["智能长文（接近对话效果）", "快速本地草稿"],
-                value="智能长文（接近对话效果）",
+                value="快速本地草稿",
             )
             detail_level = gr.Radio(
                 label="正文长度",
@@ -1476,13 +1726,56 @@ def create_app() -> gr.Blocks:
             )
 
         with gr.Row():
-            course_name = gr.Textbox(label="课程名称", placeholder="计算机网络")
-            experiment_name = gr.Textbox(label="实验名称/题目名称", placeholder="根据教程链接填充")
+            course_name = gr.Dropdown(
+                label="课程名称",
+                choices=history["course_names"],
+                value=None,
+                allow_custom_value=True,
+                filterable=True,
+                info="点开可选历史记录，也可直接输入。",
+            )
+            experiment_name = gr.Dropdown(
+                label="实验名称/题目名称",
+                choices=history["experiment_names"],
+                value=None,
+                allow_custom_value=True,
+                filterable=True,
+                info="不填也可以从对话式需求或参考链接里自动处理。",
+            )
+
+        student_profile = gr.Dropdown(
+            label="常用学生资料",
+            choices=student_profile_choices,
+            value=student_profile_choices[0] if student_profile_choices else None,
+            interactive=True,
+            info="点开选择历史资料，会自动填入姓名、学号和班级。",
+        )
 
         with gr.Row():
-            student_name = gr.Textbox(label="学生姓名", placeholder="李亦非")
-            student_id = gr.Textbox(label="学号", placeholder="2444100198")
-            class_name = gr.Textbox(label="班级", placeholder="24C")
+            student_name = gr.Dropdown(
+                label="学生姓名",
+                choices=history["student_names"],
+                value=DEFAULT_STUDENT_PROFILE["student_name"],
+                allow_custom_value=True,
+                filterable=True,
+                info="点开可选历史记录，也可直接输入。",
+            )
+            student_id = gr.Dropdown(
+                label="学号",
+                choices=history["student_ids"],
+                value=DEFAULT_STUDENT_PROFILE["student_id"],
+                allow_custom_value=True,
+                filterable=True,
+                info="点开可选历史记录，也可直接输入。",
+            )
+            class_name = gr.Dropdown(
+                label="班级",
+                choices=history["class_names"],
+                value=DEFAULT_STUDENT_PROFILE["class_name"],
+                allow_custom_value=True,
+                filterable=True,
+                info="点开可选历史记录，也可直接输入。",
+            )
 
         requirement_text = gr.Textbox(label="实验要求", lines=6, placeholder="填写实验任务、步骤要求、验收标准等")
         reference_links = gr.Textbox(label="参考链接或补充说明", lines=3, placeholder="每行一个链接，也可以写补充说明")
@@ -1508,7 +1801,14 @@ def create_app() -> gr.Blocks:
             code_files = gr.File(label="上传代码文件", file_count="multiple")
 
         with gr.Row():
-            output_root = gr.Textbox(label="输出根目录", value=str(DEFAULT_DELIVERY_ROOT), scale=2)
+            output_root = gr.Dropdown(
+                label="输出根目录",
+                choices=history["output_roots"],
+                value=str(DEFAULT_DELIVERY_ROOT),
+                allow_custom_value=True,
+                filterable=True,
+                scale=2,
+            )
             export_pdf_checked = gr.Checkbox(label="导出 PDF", value=True)
             render_preview_checked = gr.Checkbox(label="生成预览图", value=True)
 
@@ -1521,6 +1821,12 @@ def create_app() -> gr.Blocks:
             pdf_output = gr.File(label="下载 PDF")
             preview_output = gr.File(label="下载预览图")
         preview_image = gr.Image(label="预览图", type="filepath")
+
+        student_profile.change(
+            fn=apply_student_profile,
+            inputs=student_profile,
+            outputs=[student_name, student_id, class_name],
+        )
 
         generate_button.click(
             fn=generate_report,

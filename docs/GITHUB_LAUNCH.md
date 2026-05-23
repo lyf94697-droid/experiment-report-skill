@@ -7,12 +7,13 @@ Use this file when preparing the repository page, first release, and social prev
 Recommended repository description:
 
 ```text
-OpenClaw skill and PowerShell pipeline for Chinese lab reports and course-design reports: docx template filling, screenshot insertion, captions, and layout checks.
+Codex/OpenClaw compatible Skill and PowerShell pipeline for Chinese lab reports and course-design reports: docx template filling, screenshot insertion, captions, and layout checks.
 ```
 
 Recommended topics:
 
 ```text
+codex
 openclaw
 skill
 powershell
@@ -41,7 +42,7 @@ Recommended options:
 Suggested overlay text for a preview image:
 
 ```text
-OpenClaw Experiment Report Skill
+Experiment Report Skill
 Draft Chinese lab reports, fill docx templates, and insert grouped screenshots.
 ```
 
@@ -73,7 +74,7 @@ Recommended release notes:
 
 ## Included
 
-- OpenClaw skill instructions
+- Codex/OpenClaw compatible skill instructions
 - PowerShell helper scripts
 - Demo assets and prompt examples
 - Smoke tests and GitHub workflows
@@ -81,7 +82,7 @@ Recommended release notes:
 
 ## Known Scope
 
-- Designed for OpenClaw-based local workflows
+- Designed for local Skill workflows; Codex is the default install target, and OpenClaw remains supported as an optional runtime
 - Best tested on Windows and PowerShell
 - Stable path is focused on experiment reports, with course-design support behind `-ReportProfileName course-design-report`
 - Complex school templates may still need template diagnostics or manual mapping review
