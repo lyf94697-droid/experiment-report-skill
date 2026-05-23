@@ -49,7 +49,7 @@ Upload:
 
 If no template is uploaded, experiment reports use `E:\实验报告\00-模板\实验报告模版1.docx` when available. Course-design reports use `E:\新建文件夹\课程设计-模板.doc` when available.
 
-The student profile dropdown starts with `李亦非 / 2444100198 / 24C`. Course name, experiment name, student name, ID, class, and output root are editable dropdowns: click them to pick local history, or type a new value. Successful generations update `outputs/web-ui/web-ui-history.json` for the next session.
+The student profile dropdown starts with `示例学生 / 20260001 / 计科2401`. Course name, experiment name, student name, ID, class, and output root are editable dropdowns: click them to pick local history, or type a new value. Successful generations update `outputs/web-ui/web-ui-history.json` for the next session.
 
 The chat-style box can accept text like:
 
@@ -57,9 +57,9 @@ The chat-style box can accept text like:
 CSDN链接：https://example.com/article
 课程名称：计算机网络
 实验名称：根据教程链接填充
-姓名：李亦非
-学号：2444100198
-班级：24C
+姓名：示例学生
+学号：20260001
+班级：计科2401
 截图材料："E:\实验报告\截图\计网实验六"
 ```
 

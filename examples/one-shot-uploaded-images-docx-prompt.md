@@ -12,9 +12,9 @@ E:\实验报告\新建文件夹
 基础信息：
 - 课程名称：计算机网络
 - 模板路径：E:\实验报告\实验报告模版1.docx
-- 姓名：李亦非
-- 学号：244100198
-- 班级：24c
+- 姓名：示例学生
+- 学号：20260001
+- 班级：计科2401
 - 指导教师：李老师
 - 实验性质：③验证性实验
 - 实验时间：2026年4月2日
@@ -67,9 +67,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
   -ReferenceUrls "https://blog.csdn.net/你的文章链接" `
   -CourseName "计算机网络" `
   -TemplatePath "E:\实验报告\实验报告模版1.docx" `
-  -StudentName "李亦非" `
-  -StudentId "244100198" `
-  -ClassName "24c" `
+  -StudentName "示例学生" `
+  -StudentId "20260001" `
+  -ClassName "计科2401" `
   -TeacherName "李老师" `
   -ExperimentProperty "③验证性实验" `
   -ExperimentDate "2026年4月2日" `

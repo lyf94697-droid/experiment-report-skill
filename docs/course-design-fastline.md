@@ -40,9 +40,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-url.ps1 `
   -StyleProfile auto `
   -CourseName "软件工程综合实践" `
   -ExperimentName "校园导览小程序设计" `
-  -StudentName "李亦非" `
-  -StudentId "244100198" `
-  -ClassName "24C" `
+  -StudentName "示例学生" `
+  -StudentId "20260001" `
+  -ClassName "计科2401" `
   -TeacherName "李老师" `
   -ExperimentProperty "课程设计" `
   -ExperimentDate "2026年4月" `

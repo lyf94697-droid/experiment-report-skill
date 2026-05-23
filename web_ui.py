@@ -72,15 +72,15 @@ AUTO_TITLE_VALUES = {
 }
 HISTORY_LIMIT = 30
 DEFAULT_STUDENT_PROFILE = {
-    "student_name": "李亦非",
-    "student_id": "2444100198",
-    "class_name": "24C",
+    "student_name": "示例学生",
+    "student_id": "20260001",
+    "class_name": "计科2401",
 }
 DEFAULT_WEB_UI_HISTORY = {
     "student_profiles": [DEFAULT_STUDENT_PROFILE],
-    "student_names": ["李亦非"],
-    "student_ids": ["2444100198"],
-    "class_names": ["24C"],
+    "student_names": ["示例学生"],
+    "student_ids": ["20260001"],
+    "class_names": ["计科2401"],
     "course_names": ["计算机网络"],
     "experiment_names": ["根据教程链接填充"],
     "screenshot_paths": [r"E:\实验报告\截图\计网实验六"],

@@ -265,7 +265,7 @@ The repository includes a Gradio UI for local report generation. It supports the
 
 If no template is uploaded, the experiment-report mode uses `E:\实验报告\00-模板\实验报告模版1.docx` when it exists. The course-design mode uses `E:\新建文件夹\课程设计-模板.doc` when it exists.
 
-Common fields include local history suggestions, including course name, experiment name, student info, and output root. The UI ships with `李亦非 / 2444100198 / 24C` as the default student profile, and successful generations are saved to `outputs/web-ui/web-ui-history.json` so the next session can pick them from the dropdowns.
+Common fields include local history suggestions, including course name, experiment name, student info, and output root. The UI ships with `示例学生 / 20260001 / 计科2401` as the default student profile, and successful generations are saved to `outputs/web-ui/web-ui-history.json` so the next session can pick them from the dropdowns.
 
 Install the optional UI dependencies:
 
