@@ -7,6 +7,130 @@
 [![Smoke Tests](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/smoke-tests.yml/badge.svg)](https://github.com/lyf94697-droid/experiment-report-skill/actions/workflows/smoke-tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+## 5 分钟上手
+
+### 如何简单下载
+
+有 Git 的用户可以直接克隆：
+
+```powershell
+git clone https://github.com/lyf94697-droid/experiment-report-skill.git
+cd experiment-report-skill
+```
+
+不想装 Git 的用户，可以在 GitHub 仓库页点击 **Code** -> **Download ZIP**，解压后进入 `experiment-report-skill` 文件夹。
+
+### 如何简单使用
+
+最快体验方式是跑仓库自带的一键 demo：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run-one-click-demo.ps1
+```
+
+它会使用内置模板、正文和截图，自动生成可打开检查的 `docx` 文件。输出目录默认在 `tests-output/one-click-demo-时间戳/`。
+
+如果想用网页界面：
+
+```powershell
+python -m pip install -r requirements-web.txt
+python web_ui.py
+```
+
+然后打开：
+
+```text
+http://127.0.0.1:7860
+```
+
+如果想作为 Codex / OpenClaw 的本地 Skill 使用：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
+```
+
+安装后新开一个 Codex 会话，直接描述你的实验报告需求、模板路径和截图路径即可。
+
+### 直接复制的提示词
+
+#### 1. 从教程链接和截图生成实验报告
+
+```text
+请使用 experiment-report skill 帮我生成并填充一份中文实验报告。
+
+工作目录：
+E:\游戏\openclaw-experiment-report-skill
+
+基础信息：
+- 课程名称：计算机网络
+- 实验名称：局域网搭建与常用 DOS 命令使用
+- 学校模板：E:\实验报告\实验报告模版1.docx
+- 姓名：张三
+- 学号：20260001
+- 班级：计科2401
+- 指导教师：李老师
+
+材料：
+- 教程链接：https://blog.csdn.net/你的文章链接
+- 截图路径：
+  - E:\实验报告\images\step-1.png
+  - E:\实验报告\images\result-1.png
+
+要求：
+- 不要照抄教程，把教程改写成实验报告正文。
+- 正文必须能对应我提供的真实截图和实验结果。
+- 最终生成 docx，并插入截图、图注和必要的版式检查结果。
+```
+
+#### 2. 已有正文，直接填学校模板
+
+```text
+我已经有实验报告正文，请帮我填进学校 docx 模板并整理格式。
+
+工作目录：
+E:\游戏\openclaw-experiment-report-skill
+
+请使用：
+- 模板：E:\实验报告\实验报告模版1.docx
+- 正文：E:\实验报告\report.txt
+- 输出目录：E:\实验报告\final-output
+
+要求：
+- 保留学校模板原有表格、外框和标题结构。
+- 自动补全姓名、学号、课程名、实验名等字段。
+- 如果我提供截图，也要插入到合适章节并生成具体图注。
+- 完成后给出最终 docx 路径和 layout check 结果。
+```
+
+#### 3. 课程设计报告
+
+```text
+请按课程设计报告模式生成并填充报告。
+
+工作目录：
+E:\游戏\openclaw-experiment-report-skill
+
+项目信息：
+- 课程名称：软件工程课程设计
+- 题目：学生成绩管理系统
+- 模板路径：E:\课程设计\课程设计模板.docx
+- 输出目录：E:\课程设计\final-output
+
+材料：
+- 需求说明、功能模块、数据库设计、运行截图和测试结果我会提供在当前对话或本地文件中。
+
+要求：
+- 使用 course-design-report profile。
+- 包含需求分析、总体设计、详细设计、运行结果、测试分析和总结。
+- 流程图或总体设计图要单独放大展示，不要和普通截图挤在一行。
+```
+
+更多可直接套用的提示词见：
+
+- [examples/one-shot-uploaded-images-docx-prompt.md](examples/one-shot-uploaded-images-docx-prompt.md)
+- [examples/local-uploaded-images-docx-prompt.md](examples/local-uploaded-images-docx-prompt.md)
+- [examples/feishu-uploaded-images-docx-prompt.md](examples/feishu-uploaded-images-docx-prompt.md)
+
 ## 项目定位
 
 这个仓库不是“万能文档生成器”，而是一个把中文大学实验报告场景做深、做稳的通用 Skill 项目：
@@ -285,7 +409,18 @@ Then open:
 http://127.0.0.1:7860
 ```
 
-The page returns download buttons for DOCX, PDF, and a preview PNG, and it also displays the preview image in the page after generation. The default generation mode uses the faster local draft path for stable everyday runs. The smart long-form mode is still available when the local OpenClaw chat gateway is working; if it fails, the UI falls back to the local draft and keeps the warning in the UI. See [examples/web_demo.md](examples/web_demo.md).
+The page returns download buttons for DOCX, PDF, and a preview PNG, and it also displays the preview image in the page after generation. The default generation mode uses the faster local draft path for stable everyday runs. The smart long-form mode is still available when the local OpenClaw chat gateway is working; if it fails, the UI falls back to the local draft and keeps the warning in the UI.
+
+The `质量模式` field defaults to `快速生成`. Use `严格检查` only when a template is new, visually risky, or has produced narrow metadata cells before. Strict mode adds a lightweight readability guard for metadata tables and keeps the normal fast path unchanged.
+
+PDF export is optional and is deliberately separated from DOCX generation. The stable path is LibreOffice / `soffice`; WPS or Microsoft Word COM automation is disabled by default because it can hang when Office is busy. To allow WPS/Word fallback anyway, close Office/WPS windows and start the UI with:
+
+```powershell
+$env:EXPERIMENT_REPORT_ALLOW_OFFICE_COM = "1"
+python web_ui.py
+```
+
+If PDF export fails, the DOCX is still kept and the UI shows a plain-language warning with the likely cause and log path. See [examples/web_demo.md](examples/web_demo.md).
 
 ## License
 
