@@ -18,6 +18,50 @@ if ([string]::IsNullOrWhiteSpace($BrowserProfile)) {
   $BrowserProfile = "openclaw"
 }
 
+function Invoke-OpenClawBrowserStatusWithRetry {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Cli,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Profile,
+
+    [int]$Attempts = 3,
+
+    [int]$DelaySeconds = 2
+  )
+
+  $lastOutput = ""
+  $lastExitCode = 0
+
+  for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+    $output = (& $Cli browser status --browser-profile $Profile 2>&1 | Out-String).Trim()
+    $exitCode = $LASTEXITCODE
+
+    if ($exitCode -eq 0) {
+      return [pscustomobject]@{
+        Succeeded = $true
+        Output = $output
+        ExitCode = $exitCode
+        Attempts = $attempt
+      }
+    }
+
+    $lastOutput = $output
+    $lastExitCode = $exitCode
+    if ($attempt -lt $Attempts) {
+      Start-Sleep -Seconds $DelaySeconds
+    }
+  }
+
+  return [pscustomobject]@{
+    Succeeded = $false
+    Output = $lastOutput
+    ExitCode = $lastExitCode
+    Attempts = $Attempts
+  }
+}
+
 function Resolve-OpenClawCommand {
   param(
     [string]$Candidate
@@ -63,11 +107,23 @@ function Parse-JsonFromOutput {
 }
 
 $cli = Resolve-OpenClawCommand -Candidate $OpenClawCmd
-$uri = [Uri]$Url
+try {
+  $uri = [Uri]$Url
+} catch {
+  throw "URL is not a valid URI: $Url"
+}
 
-$status = (& $cli browser status --browser-profile $BrowserProfile 2>&1 | Out-String).Trim()
-if ($status -notmatch "running:\s*true") {
+if (-not $uri.IsAbsoluteUri -or @("http", "https") -notcontains $uri.Scheme.ToLowerInvariant()) {
+  throw "URL must use http or https: $Url"
+}
+
+$statusResult = Invoke-OpenClawBrowserStatusWithRetry -Cli $cli -Profile $BrowserProfile
+if (-not $statusResult.Succeeded -or $statusResult.Output -notmatch "running:\s*true") {
   & $cli browser start --browser-profile $BrowserProfile | Out-Null
+  $statusResult = Invoke-OpenClawBrowserStatusWithRetry -Cli $cli -Profile $BrowserProfile
+}
+if (-not $statusResult.Succeeded -or $statusResult.Output -notmatch "running:\s*true") {
+  throw "OpenClaw browser did not become ready after start. Last status: $($statusResult.Output)"
 }
 
 $openRaw = (& $cli browser --browser-profile $BrowserProfile open $Url --json 2>&1 | Out-String).Trim()

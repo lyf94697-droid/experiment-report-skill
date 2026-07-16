@@ -86,7 +86,7 @@ $basePromptText = if (-not [string]::IsNullOrWhiteSpace($PromptPath)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutFile)) {
-  $OutFile = Join-Path $repoRoot ("tests-output\prepared-prompt-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".txt")
+  $OutFile = [System.IO.Path]::Combine($repoRoot, "tests-output", ("prepared-prompt-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".txt"))
 }
 
 $resolvedOutFile = [System.IO.Path]::GetFullPath($OutFile)
@@ -112,7 +112,7 @@ foreach ($referenceUrl in @($ReferenceUrls)) {
     continue
   }
 
-  $fetchedReference = & (Join-Path $PSScriptRoot "fetch-web-article.ps1") `
+  $fetchedReference = & ([System.IO.Path]::Combine($PSScriptRoot, "fetch-web-article.ps1")) `
     -Url $referenceUrl `
     -BrowserProfile $BrowserProfile `
     -OpenClawCmd $OpenClawCmd `

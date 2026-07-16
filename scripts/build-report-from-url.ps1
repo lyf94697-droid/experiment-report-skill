@@ -71,6 +71,9 @@ param(
   [ValidateSet("fast", "full")]
   [string]$PipelineMode = "fast",
 
+  [ValidateSet("fast", "strict")]
+  [string]$QualityMode = "fast",
+
   [ValidateSet("auto", "default", "compact", "school", "excellent")]
   [string]$StyleProfile = "auto",
 
@@ -89,6 +92,18 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "report-defaults.ps1")
 . (Join-Path $PSScriptRoot "report-profiles.ps1")
+
+function Get-RepoScriptPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptName
+  )
+
+  return [System.IO.Path]::Combine($RepoRoot, "scripts", $ScriptName)
+}
 
 function Read-MetadataDocument {
   param(
@@ -240,7 +255,7 @@ if ([string]::IsNullOrWhiteSpace($ExperimentProperty)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-  $OutputDir = Join-Path $repoRoot ("tests-output\url-build-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+  $OutputDir = [System.IO.Path]::Combine($repoRoot, "tests-output", ("url-build-" + (Get-Date -Format "yyyyMMdd-HHmmss")))
 }
 
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
@@ -297,7 +312,7 @@ if ([string]::IsNullOrWhiteSpace($resolvedPreparedInputsSummaryPath)) {
   if (-not [string]::IsNullOrWhiteSpace($ExperimentLocation)) { $inputParams.ExperimentLocation = $ExperimentLocation }
   if ($null -ne $RequiredKeywords -and @($RequiredKeywords).Count -gt 0) { $inputParams.RequiredKeywords = $RequiredKeywords }
 
-  & (Join-Path $repoRoot "scripts\generate-report-inputs.ps1") @inputParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-report-inputs.ps1") @inputParams | Out-Null
 }
 
 $inputSummary = if ($null -ne $preparedInputsContext.summary) {
@@ -364,7 +379,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedPreGeneratedReportPath)) {
 if ($SkipSessionReset) {
   $generateChatParams.SkipSessionReset = $true
 }
-& (Join-Path $repoRoot "scripts\generate-report-chat.ps1") @generateChatParams | Out-Null
+& (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-report-chat.ps1") @generateChatParams | Out-Null
 
 $rawReportText = Get-Content -LiteralPath $rawReportPath -Raw -Encoding UTF8
 $cleanedReportText = Normalize-GeneratedReportText -Text $rawReportText -Labels $labels
@@ -380,6 +395,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedTemplatePath)) {
     OutputDir = $resolvedOutputDir
     StyleFinalDocx = $true
     PipelineMode = $PipelineMode
+    QualityMode = $QualityMode
     StyleProfile = $StyleProfile
   }
 
@@ -419,7 +435,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedTemplatePath)) {
     $buildParams.CreateTemplateFrameDocx = $true
   }
 
-  & (Join-Path $repoRoot "scripts\build-report.ps1") @buildParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "build-report.ps1") @buildParams | Out-Null
   $buildSummaryPath = Join-Path $resolvedOutputDir "summary.json"
   $buildSummary = (Get-Content -LiteralPath $buildSummaryPath -Raw -Encoding UTF8) | ConvertFrom-Json
   $generatedFinalDocxPath = [string]$buildSummary.finalDocxPath
@@ -506,6 +522,7 @@ $pipelineTrace = [pscustomobject]@{
     mode = "generated-report"
     generationMode = $generationMode
     pipelineMode = $PipelineMode
+    qualityMode = $QualityMode
     reportProfileName = [string]$reportProfile.name
     reportProfileDisplayName = $documentLabel
     detailLevel = $effectiveDetailLevel
@@ -551,6 +568,7 @@ $pipelineTraceMarkdownLines = New-Object System.Collections.Generic.List[string]
 [void]$pipelineTraceMarkdownLines.Add("- Mode: generated-report")
 [void]$pipelineTraceMarkdownLines.Add("- Generation mode: $generationMode")
 [void]$pipelineTraceMarkdownLines.Add("- Pipeline mode: $PipelineMode")
+[void]$pipelineTraceMarkdownLines.Add("- Quality mode: $QualityMode")
 [void]$pipelineTraceMarkdownLines.Add("- Report profile: $([string]$reportProfile.name)")
 [void]$pipelineTraceMarkdownLines.Add("- Display name: $documentLabel")
 [void]$pipelineTraceMarkdownLines.Add("- Detail level: $effectiveDetailLevel")
@@ -603,6 +621,7 @@ $wrapperSummary = [pscustomobject]@{
   detailLevel = $effectiveDetailLevel
   generationMode = $generationMode
   pipelineMode = $PipelineMode
+  qualityMode = $QualityMode
   promptPath = $promptPathOut
   requestedReferenceUrls = $(if ($inputSummary.PSObject.Properties.Name -contains "requestedReferenceUrls") { @($inputSummary.requestedReferenceUrls) } else { @() })
   referenceUrls = $effectiveReferenceUrlList

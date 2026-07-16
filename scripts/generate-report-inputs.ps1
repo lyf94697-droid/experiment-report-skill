@@ -52,6 +52,18 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "report-defaults.ps1")
 . (Join-Path $PSScriptRoot "report-profiles.ps1")
 
+function Get-RepoScriptPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptName
+  )
+
+  return [System.IO.Path]::Combine($RepoRoot, "scripts", $ScriptName)
+}
+
 function Resolve-AbsolutePathIfProvided {
   param(
     [AllowNull()]
@@ -74,6 +86,23 @@ function Get-NonEmptyList {
   return @($Values | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
 
+function Assert-WebReferenceUrl {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$Url
+  )
+
+  try {
+    $uri = [System.Uri]$Url
+  } catch {
+    throw "Reference URL is not a valid URI: $Url"
+  }
+
+  if (-not $uri.IsAbsoluteUri -or @("http", "https") -notcontains $uri.Scheme.ToLowerInvariant()) {
+    throw "Reference URL must use http or https: $Url"
+  }
+}
+
 if (-not [string]::IsNullOrWhiteSpace($PromptPath) -and -not [string]::IsNullOrWhiteSpace($PromptText)) {
   throw "Provide at most one of -PromptPath or -PromptText."
 }
@@ -90,7 +119,7 @@ if ([string]::IsNullOrWhiteSpace($ExperimentProperty)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-  $OutputDir = Join-Path $repoRoot ("tests-output\report-inputs-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+  $OutputDir = [System.IO.Path]::Combine($repoRoot, "tests-output", ("report-inputs-" + (Get-Date -Format "yyyyMMdd-HHmmss")))
 }
 
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
@@ -108,6 +137,9 @@ if (-not [string]::IsNullOrWhiteSpace($summaryParent)) {
 
 $resolvedPromptPath = Resolve-AbsolutePathIfProvided -Path $PromptPath
 $referenceUrlList = Get-NonEmptyList -Values $ReferenceUrls
+foreach ($referenceUrl in $referenceUrlList) {
+  Assert-WebReferenceUrl -Url ([string]$referenceUrl)
+}
 $referenceTextPathList = Get-NonEmptyList -Values $ReferenceTextPaths
 $effectiveReferenceUrlList = $referenceUrlList
 $inferredExperimentName = Resolve-InferredExperimentName `
@@ -125,7 +157,7 @@ if ([string]::IsNullOrWhiteSpace($ExperimentName) -and [string]::IsNullOrWhiteSp
   for ($referenceIndex = 0; $referenceIndex -lt $referenceUrlList.Count; $referenceIndex++) {
     $referenceUrl = [string]$referenceUrlList[$referenceIndex]
     $fetchedReferencePath = Join-Path $fetchedReferenceDir ("reference-{0:D2}.txt" -f ($referenceIndex + 1))
-    $fetchedReference = & (Join-Path $repoRoot "scripts\fetch-web-article.ps1") `
+    $fetchedReference = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "fetch-web-article.ps1") `
       -Url $referenceUrl `
       -BrowserProfile $BrowserProfile `
       -OpenClawCmd $OpenClawCmd `

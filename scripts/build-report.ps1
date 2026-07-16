@@ -46,6 +46,9 @@ param(
   [ValidateSet("fast", "full")]
   [string]$PipelineMode = "fast",
 
+  [ValidateSet("fast", "strict")]
+  [string]$QualityMode = "fast",
+
   [ValidateSet("auto", "default", "compact", "school", "excellent")]
   [string]$StyleProfile = "auto",
 
@@ -70,6 +73,73 @@ function Ensure-ParentDirectory {
   }
 }
 
+function Release-ComObjectIfNeeded {
+  param(
+    [AllowNull()]
+    [object]$ComObject
+  )
+
+  if ($null -eq $ComObject) {
+    return
+  }
+
+  try {
+    if ([System.Runtime.InteropServices.Marshal]::IsComObject($ComObject)) {
+      [void][System.Runtime.InteropServices.Marshal]::FinalReleaseComObject($ComObject)
+    }
+  } catch {
+    # Best-effort cleanup only.
+  }
+}
+
+function Clear-ComReferences {
+  [System.GC]::Collect()
+  [System.GC]::WaitForPendingFinalizers()
+}
+
+function Get-OfficeProcessDiagnostic {
+  $processNames = @("WINWORD", "wps", "wpp", "et")
+  $runningProcesses = New-Object System.Collections.Generic.List[string]
+
+  foreach ($processName in $processNames) {
+    try {
+      foreach ($process in @(Get-Process -Name $processName -ErrorAction SilentlyContinue)) {
+        [void]$runningProcesses.Add(("{0}(pid={1})" -f $process.ProcessName, $process.Id))
+      }
+    } catch {
+      # Process diagnostics should never hide the conversion error.
+    }
+  }
+
+  if ($runningProcesses.Count -eq 0) {
+    return "Running Office/WPS processes: none detected."
+  }
+
+  return ("Running Office/WPS processes: {0}" -f ((@($runningProcesses) | Sort-Object -Unique) -join ", "))
+}
+
+function Get-TemplateConversionFailureMessage {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$SourcePath,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ConvertedPath,
+
+    [Parameter(Mandatory = $true)]
+    [System.Collections.Generic.List[string]]$WpsErrors,
+
+    [Parameter(Mandatory = $true)]
+    [System.Collections.Generic.List[string]]$WordErrors
+  )
+
+  $wpsDetail = if ($WpsErrors.Count -gt 0) { (@($WpsErrors) -join " | ") } else { "not attempted or no error captured" }
+  $wordDetail = if ($WordErrors.Count -gt 0) { (@($WordErrors) -join " | ") } else { "not attempted or no error captured" }
+  $processDetail = Get-OfficeProcessDiagnostic
+
+  return ("Failed to convert .doc template to .docx. Source: {0}. Output: {1}. WPS attempts: {2}. Word attempts: {3}. {4}. Common causes: Word/WPS is busy or showing a modal dialog, the template is open or locked, Protected View or first-run dialogs are pending, or Office/WPS was started with a different privilege level. Close Word/WPS dialogs and the template file, then retry; if it still fails, manually save the template as .docx and pass that .docx to -TemplatePath." -f $SourcePath, $ConvertedPath, $wpsDetail, $wordDetail, $processDetail)
+}
+
 function Convert-TemplateToDocxIfNeeded {
   param(
     [Parameter(Mandatory = $true)]
@@ -79,11 +149,12 @@ function Convert-TemplateToDocxIfNeeded {
     [string]$OutputDir
   )
 
-  $extension = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+  $sourcePath = (Resolve-Path -LiteralPath $Path).Path
+  $extension = [System.IO.Path]::GetExtension($sourcePath).ToLowerInvariant()
   if ($extension -eq ".docx") {
     return [pscustomobject]@{
-      templatePath = $Path
-      sourceTemplatePath = $Path
+      templatePath = $sourcePath
+      sourceTemplatePath = $sourcePath
       status = "none"
       converter = "none"
       convertedTemplatePath = $null
@@ -91,58 +162,76 @@ function Convert-TemplateToDocxIfNeeded {
   }
 
   if ($extension -ne ".doc") {
-    throw "Only .docx templates are supported directly; .doc templates can be converted with Word COM: $Path"
+    throw "Only .docx templates are supported directly; .doc templates can be converted with WPS/Word COM if Office automation is available: $sourcePath"
   }
 
-  $convertedDir = Join-Path $OutputDir "converted-templates"
+  $convertedDir = Join-Path ([System.IO.Path]::GetFullPath($OutputDir)) "converted-templates"
   New-Item -ItemType Directory -Path $convertedDir -Force | Out-Null
-  $convertedPath = Join-Path $convertedDir (([System.IO.Path]::GetFileNameWithoutExtension($Path)) + ".docx")
+  $convertedPath = Join-Path $convertedDir (([System.IO.Path]::GetFileNameWithoutExtension($sourcePath)) + ".docx")
   if (Test-Path -LiteralPath $convertedPath) {
     Remove-Item -LiteralPath $convertedPath -Force
   }
 
-  $wpsErrorMessage = ""
-  $wpsApp = $null
-  $wpsDoc = $null
-  try {
-    $wpsApp = New-Object -ComObject KWPS.Application
-    $wpsApp.Visible = $false
-    $wpsDoc = $wpsApp.Documents.Open($Path)
-    Start-Sleep -Milliseconds 300
-    $wpsDoc.SaveAs($convertedPath, 16)
-    Start-Sleep -Milliseconds 300
-    if (Test-Path -LiteralPath $convertedPath -PathType Leaf) {
-      return [pscustomobject]@{
-        templatePath = (Resolve-Path -LiteralPath $convertedPath).Path
-        sourceTemplatePath = $Path
-        status = "converted"
-        converter = "wps"
-        convertedTemplatePath = (Resolve-Path -LiteralPath $convertedPath).Path
-      }
-    }
-  } catch {
-    $wpsErrorMessage = $_.Exception.Message
-    if (Test-Path -LiteralPath $convertedPath) {
-      Remove-Item -LiteralPath $convertedPath -Force -ErrorAction SilentlyContinue
-    }
-  } finally {
-    if ($null -ne $wpsDoc) {
+  $wpsErrors = New-Object System.Collections.Generic.List[string]
+  for ($attempt = 1; $attempt -le 3; $attempt++) {
+    $wpsApp = $null
+    $wpsDoc = $null
+    try {
+      $wpsApp = New-Object -ComObject KWPS.Application
+      $wpsApp.Visible = $false
       try {
-        $wpsDoc.Close($false)
+        $wpsApp.DisplayAlerts = 0
       } catch {
-        # Best-effort cleanup only.
+        # Some WPS automation hosts do not expose DisplayAlerts.
       }
-    }
-    if ($null -ne $wpsApp) {
-      try {
-        $wpsApp.Quit()
-      } catch {
-        # Best-effort cleanup only.
+      Start-Sleep -Milliseconds (300 * $attempt)
+      $wpsDoc = $wpsApp.Documents.Open($sourcePath)
+      Start-Sleep -Milliseconds (500 * $attempt)
+      $wpsDoc.SaveAs($convertedPath, 16)
+      Start-Sleep -Milliseconds 300
+      if (Test-Path -LiteralPath $convertedPath -PathType Leaf) {
+        $resolvedConvertedPath = (Resolve-Path -LiteralPath $convertedPath).Path
+        return [pscustomobject]@{
+          templatePath = $resolvedConvertedPath
+          sourceTemplatePath = $sourcePath
+          status = "converted"
+          converter = "wps"
+          convertedTemplatePath = $resolvedConvertedPath
+        }
       }
+      throw "WPS SaveAs completed but did not create the output file: $convertedPath"
+    } catch {
+      [void]$wpsErrors.Add(("attempt {0}: {1}" -f $attempt, $_.Exception.Message))
+      if (Test-Path -LiteralPath $convertedPath) {
+        Remove-Item -LiteralPath $convertedPath -Force -ErrorAction SilentlyContinue
+      }
+      if ($attempt -lt 3) {
+        Start-Sleep -Milliseconds (900 * $attempt)
+      }
+    } finally {
+      if ($null -ne $wpsDoc) {
+        try {
+          $wpsDoc.Close($false)
+        } catch {
+          # Best-effort cleanup only.
+        } finally {
+          Release-ComObjectIfNeeded -ComObject $wpsDoc
+        }
+      }
+      if ($null -ne $wpsApp) {
+        try {
+          $wpsApp.Quit()
+        } catch {
+          # Best-effort cleanup only.
+        } finally {
+          Release-ComObjectIfNeeded -ComObject $wpsApp
+        }
+      }
+      Clear-ComReferences
     }
   }
 
-  $lastErrorMessage = ""
+  $wordErrors = New-Object System.Collections.Generic.List[string]
   for ($attempt = 1; $attempt -le 3; $attempt++) {
     $app = $null
     $doc = $null
@@ -156,18 +245,21 @@ function Convert-TemplateToDocxIfNeeded {
         # Older Word automation hosts may not expose AutomationSecurity.
       }
       Start-Sleep -Milliseconds (300 * $attempt)
-      $doc = $app.Documents.Open($Path, $false, $true, $false)
+      $doc = $app.Documents.Open($sourcePath, $false, $true, $false)
       Start-Sleep -Milliseconds (500 * $attempt)
       $doc.SaveAs2($convertedPath, 16)
       Start-Sleep -Milliseconds 300
+      if (-not (Test-Path -LiteralPath $convertedPath -PathType Leaf)) {
+        throw "Word SaveAs2 completed but did not create the output file: $convertedPath"
+      }
       break
     } catch {
-      $lastErrorMessage = $_.Exception.Message
+      [void]$wordErrors.Add(("attempt {0}: {1}" -f $attempt, $_.Exception.Message))
       if (Test-Path -LiteralPath $convertedPath) {
         Remove-Item -LiteralPath $convertedPath -Force -ErrorAction SilentlyContinue
       }
       if ($attempt -eq 3) {
-        throw "Failed to convert .doc template to .docx. WPS error: $wpsErrorMessage. Word COM error after 3 attempts: $lastErrorMessage"
+        throw (Get-TemplateConversionFailureMessage -SourcePath $sourcePath -ConvertedPath $convertedPath -WpsErrors $wpsErrors -WordErrors $wordErrors)
       }
       Start-Sleep -Milliseconds (900 * $attempt)
     } finally {
@@ -176,6 +268,8 @@ function Convert-TemplateToDocxIfNeeded {
           $doc.Close($false)
         } catch {
           # Best-effort cleanup only.
+        } finally {
+          Release-ComObjectIfNeeded -ComObject $doc
         }
       }
       if ($null -ne $app) {
@@ -183,21 +277,25 @@ function Convert-TemplateToDocxIfNeeded {
           $app.Quit()
         } catch {
           # Best-effort cleanup only.
+        } finally {
+          Release-ComObjectIfNeeded -ComObject $app
         }
       }
+      Clear-ComReferences
     }
   }
 
   if (-not (Test-Path -LiteralPath $convertedPath -PathType Leaf)) {
-    throw "Word COM did not produce the converted template: $convertedPath"
+    throw (Get-TemplateConversionFailureMessage -SourcePath $sourcePath -ConvertedPath $convertedPath -WpsErrors $wpsErrors -WordErrors $wordErrors)
   }
 
+  $resolvedConvertedPath = (Resolve-Path -LiteralPath $convertedPath).Path
   return [pscustomobject]@{
-    templatePath = (Resolve-Path -LiteralPath $convertedPath).Path
-    sourceTemplatePath = $Path
+    templatePath = $resolvedConvertedPath
+    sourceTemplatePath = $sourcePath
     status = "converted"
     converter = "word"
-    convertedTemplatePath = (Resolve-Path -LiteralPath $convertedPath).Path
+    convertedTemplatePath = $resolvedConvertedPath
   }
 }
 
@@ -224,7 +322,9 @@ function Get-OptionalTextContent {
 function Get-JsonObjectOrNull {
   param(
     [AllowNull()]
-    [string]$JsonText
+    [string]$JsonText,
+
+    [string]$SourceLabel = "JSON input"
   )
 
   if ([string]::IsNullOrWhiteSpace($JsonText)) {
@@ -234,8 +334,20 @@ function Get-JsonObjectOrNull {
   try {
     return $JsonText | ConvertFrom-Json
   } catch {
-    return $null
+    throw "$SourceLabel is not valid JSON. $($_.Exception.Message)"
   }
+}
+
+function Get-RepoScriptPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptName
+  )
+
+  return [System.IO.Path]::Combine($RepoRoot, "scripts", $ScriptName)
 }
 
 function Get-ImageInputItems {
@@ -262,7 +374,7 @@ function Get-ImageInputItems {
   }
 
   $jsonText = Get-OptionalTextContent -Path $SpecsPath -InlineText $SpecsJson
-  $rootObject = Get-JsonObjectOrNull -JsonText $jsonText
+  $rootObject = Get-JsonObjectOrNull -JsonText $jsonText -SourceLabel "Image specs"
   if ($null -eq $rootObject) {
     return @()
   }
@@ -362,7 +474,7 @@ function Get-CourseDesignFlowchartTitle {
   )
 
   $metadataText = Get-OptionalTextContent -Path $MetadataPath -InlineText $MetadataJson
-  $metadataRoot = Get-JsonObjectOrNull -JsonText $metadataText
+  $metadataRoot = Get-JsonObjectOrNull -JsonText $metadataText -SourceLabel "Metadata"
   if ($null -ne $metadataRoot) {
     foreach ($key in @("课题名称", "项目名称", "题目", "标题", "实验名称")) {
       $value = Get-ImageItemValue -Item $metadataRoot -Keys @($key)
@@ -506,7 +618,7 @@ function Try-NewCourseDesignAutoFlowchart {
     return $null
   }
 
-  $rendererPath = Join-Path $RepoRoot "scripts\render-vertical-lab-flowchart.py"
+  $rendererPath = [System.IO.Path]::Combine($RepoRoot, "scripts", "render-vertical-lab-flowchart.py")
   if (-not (Test-Path -LiteralPath $rendererPath)) {
     return $null
   }
@@ -643,7 +755,7 @@ $shouldRunValidation = $runFullPipeline -or ($requirementsInputMode -ne "none")
 $shouldGenerateDebugOutlines = $runFullPipeline
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-  $OutputDir = Join-Path $repoRoot ("tests-output\build-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+  $OutputDir = [System.IO.Path]::Combine($repoRoot, "tests-output", ("build-" + (Get-Date -Format "yyyyMMdd-HHmmss")))
 }
 
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
@@ -736,7 +848,7 @@ if ($shouldRunValidation) {
     $validationParams.RequirementsJson = $RequirementsJson
   }
 
-  $validationJson = & (Join-Path $repoRoot "scripts\validate-report-draft.ps1") @validationParams | Out-String
+  $validationJson = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "validate-report-draft.ps1") @validationParams | Out-String
   [System.IO.File]::WriteAllText($validationPath, $validationJson, (New-Object System.Text.UTF8Encoding($true)))
   $validationResult = $validationJson | ConvertFrom-Json
 }
@@ -755,12 +867,12 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedMetadataPath)) {
   $fieldMapParams.MetadataJson = $MetadataJson
 }
 
-& (Join-Path $repoRoot "scripts\generate-docx-field-map.ps1") @fieldMapParams | Out-Null
-& (Join-Path $repoRoot "scripts\apply-docx-field-map.ps1") -TemplatePath $resolvedTemplatePath -MappingPath $resolvedFieldMapOutPath -OutPath $resolvedFilledDocxOutPath -Overwrite | Out-Null
+& (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-docx-field-map.ps1") @fieldMapParams | Out-Null
+& (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "apply-docx-field-map.ps1") -TemplatePath $resolvedTemplatePath -MappingPath $resolvedFieldMapOutPath -OutPath $resolvedFilledDocxOutPath -Overwrite | Out-Null
 
 if ($shouldGenerateDebugOutlines) {
   $filledOutlinePath = Join-Path $resolvedOutputDir "filled-template-outline.md"
-  $filledOutline = & (Join-Path $repoRoot "scripts\extract-docx-template.ps1") -Path $resolvedFilledDocxOutPath -Format markdown | Out-String
+  $filledOutline = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "extract-docx-template.ps1") -Path $resolvedFilledDocxOutPath -Format markdown | Out-String
   [System.IO.File]::WriteAllText($filledOutlinePath, $filledOutline, (New-Object System.Text.UTF8Encoding($true)))
 }
 
@@ -805,7 +917,7 @@ if ($effectiveImageInputsProvided) {
     $imagePlanJsonParams = $imageInputParams.Clone()
     $imagePlanJsonParams.Format = "json"
     $imagePlanJsonParams.PlanOnly = $true
-    $imagePlanResult = ((& (Join-Path $repoRoot "scripts\generate-docx-image-map.ps1") @imagePlanJsonParams) | Out-String) | ConvertFrom-Json
+    $imagePlanResult = ((& (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-docx-image-map.ps1") @imagePlanJsonParams) | Out-String) | ConvertFrom-Json
     $imagePlanEntries = if ($null -ne $imagePlanResult -and $imagePlanResult.PSObject.Properties.Name -contains "plan") {
       @($imagePlanResult.plan)
     } else {
@@ -818,13 +930,13 @@ if ($effectiveImageInputsProvided) {
     $imagePlanMarkdownParams.Format = "markdown"
     $imagePlanMarkdownParams.PlanOnly = $true
     $imagePlanMarkdownParams.OutFile = $resolvedImagePlanOutPath
-    & (Join-Path $repoRoot "scripts\generate-docx-image-map.ps1") @imagePlanMarkdownParams | Out-Null
+    & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-docx-image-map.ps1") @imagePlanMarkdownParams | Out-Null
   }
 
   $imageMapParams = $imageInputParams.Clone()
   $imageMapParams.Format = "json"
   $imageMapParams.OutFile = $resolvedImageMapOutPath
-  & (Join-Path $repoRoot "scripts\generate-docx-image-map.ps1") @imageMapParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-docx-image-map.ps1") @imageMapParams | Out-Null
   $generatedImageMap = (Get-Content -LiteralPath $resolvedImageMapOutPath -Raw -Encoding UTF8) | ConvertFrom-Json
   if ($shouldRunLayoutCheck -and $null -ne $generatedImageMap -and $generatedImageMap.PSObject.Properties.Name -contains "images") {
     $expectedLayoutImageCount = @($generatedImageMap.images).Count
@@ -833,7 +945,7 @@ if ($effectiveImageInputsProvided) {
       }).Count
   }
 
-  & (Join-Path $repoRoot "scripts\insert-docx-images.ps1") `
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "insert-docx-images.ps1") `
     -DocxPath $resolvedFilledDocxOutPath `
     -MappingPath $resolvedImageMapOutPath `
     -ReportProfileName $ReportProfileName `
@@ -843,7 +955,7 @@ if ($effectiveImageInputsProvided) {
 
   if ($shouldGenerateDebugOutlines) {
     $filledWithImagesOutlinePath = Join-Path $resolvedOutputDir "filled-template-with-images-outline.md"
-    $filledWithImagesOutline = & (Join-Path $repoRoot "scripts\extract-docx-template.ps1") -Path $resolvedFilledDocxWithImagesOutPath -Format markdown | Out-String
+    $filledWithImagesOutline = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "extract-docx-template.ps1") -Path $resolvedFilledDocxWithImagesOutPath -Format markdown | Out-String
     [System.IO.File]::WriteAllText($filledWithImagesOutlinePath, $filledWithImagesOutline, (New-Object System.Text.UTF8Encoding($true)))
   }
 }
@@ -852,7 +964,7 @@ if ([string]::Equals([string]$reportProfile.name, "course-design-report", [Syste
   $courseDesignTablesInputPath = if ($null -ne $resolvedFilledDocxWithImagesOutPath) { $resolvedFilledDocxWithImagesOutPath } else { $resolvedFilledDocxOutPath }
   $resolvedCourseDesignTablesDocxOutPath = Join-Path $resolvedOutputDir (([System.IO.Path]::GetFileNameWithoutExtension($courseDesignTablesInputPath)) + ".course-tables.docx")
   Ensure-ParentDirectory -Path $resolvedCourseDesignTablesDocxOutPath
-  $courseDesignTablesResult = & (Join-Path $repoRoot "scripts\insert-course-design-tables.ps1") `
+  $courseDesignTablesResult = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "insert-course-design-tables.ps1") `
     -DocxPath $courseDesignTablesInputPath `
     -OutPath $resolvedCourseDesignTablesDocxOutPath `
     -Overwrite
@@ -878,16 +990,16 @@ if ($styleOutputRequested) {
     $styleParams.ProfilePath = (Resolve-Path -LiteralPath $StyleProfilePath).Path
   }
 
-  $styleResult = & (Join-Path $repoRoot "scripts\format-docx-report-style.ps1") @styleParams
+  $styleResult = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "format-docx-report-style.ps1") @styleParams
 
   if ($shouldGenerateDebugOutlines) {
     $styledOutlinePath = Join-Path $resolvedOutputDir "styled-template-outline.md"
-    $styledOutline = & (Join-Path $repoRoot "scripts\extract-docx-template.ps1") -Path $resolvedStyledDocxOutPath -Format markdown | Out-String
+    $styledOutline = & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "extract-docx-template.ps1") -Path $resolvedStyledDocxOutPath -Format markdown | Out-String
     [System.IO.File]::WriteAllText($styledOutlinePath, $styledOutline, (New-Object System.Text.UTF8Encoding($true)))
   }
 }
 
-$finalDocxPath = if ($null -ne $resolvedStyledDocxOutPath) {
+$preFrameFinalDocxPath = if ($null -ne $resolvedStyledDocxOutPath) {
   $resolvedStyledDocxOutPath
 } elseif ($null -ne $resolvedCourseDesignTablesDocxOutPath) {
   $resolvedCourseDesignTablesDocxOutPath
@@ -896,18 +1008,20 @@ $finalDocxPath = if ($null -ne $resolvedStyledDocxOutPath) {
 } else {
   $resolvedFilledDocxOutPath
 }
+$finalDocxPath = $preFrameFinalDocxPath
 
 if ($shouldCreateTemplateFrameDocx) {
   $resolvedTemplateFrameDocxOutPath = if ([string]::IsNullOrWhiteSpace($TemplateFrameDocxOutPath)) {
-    Join-Path $resolvedOutputDir (([System.IO.Path]::GetFileNameWithoutExtension($finalDocxPath)) + ".template-frame.docx")
+    Join-Path $resolvedOutputDir (([System.IO.Path]::GetFileNameWithoutExtension($preFrameFinalDocxPath)) + ".template-frame.docx")
   } else {
     [System.IO.Path]::GetFullPath($TemplateFrameDocxOutPath)
   }
   Ensure-ParentDirectory -Path $resolvedTemplateFrameDocxOutPath
-  & (Join-Path $repoRoot "scripts\convert-docx-template-frame.ps1") `
-    -DocxPath $finalDocxPath `
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "convert-docx-template-frame.ps1") `
+    -DocxPath $preFrameFinalDocxPath `
     -OutPath $resolvedTemplateFrameDocxOutPath `
     -Overwrite | Out-Null
+  $finalDocxPath = $resolvedTemplateFrameDocxOutPath
 }
 
 if ($shouldRunLayoutCheck) {
@@ -928,7 +1042,13 @@ if ($shouldRunLayoutCheck) {
   if ($expectedLayoutCaptionCount -ge 0) {
     $layoutCheckParams.ExpectedCaptionCount = $expectedLayoutCaptionCount
   }
-  & (Join-Path $repoRoot "scripts\check-docx-layout.ps1") @layoutCheckParams | Out-Null
+  if ($shouldCreateTemplateFrameDocx) {
+    $layoutCheckParams.RequireTemplateFrame = $true
+  }
+  if ([string]::Equals($QualityMode, "strict", [System.StringComparison]::OrdinalIgnoreCase)) {
+    $layoutCheckParams.RequireReadableMetadata = $true
+  }
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "check-docx-layout.ps1") @layoutCheckParams | Out-Null
   $layoutCheckResult = (Get-Content -LiteralPath $layoutCheckPath -Raw -Encoding UTF8) | ConvertFrom-Json
 }
 
@@ -960,6 +1080,7 @@ if ($null -ne $validationResult -and $validationResult.summary.PSObject.Properti
 $summary = [pscustomobject]@{
   outputDir = $resolvedOutputDir
   pipelineMode = $PipelineMode
+  qualityMode = $QualityMode
   reportProfileName = [string]$reportProfile.name
   reportProfilePath = $resolvedReportProfilePath
   templatePath = $resolvedTemplatePath
@@ -989,6 +1110,7 @@ $summary = [pscustomobject]@{
   courseDesignTablesInserted = $(if ($null -ne $courseDesignTablesResult -and $courseDesignTablesResult.PSObject.Properties.Name -contains "inserted") { [bool]$courseDesignTablesResult.inserted } else { $null })
   courseDesignTablesCount = $(if ($null -ne $courseDesignTablesResult -and $courseDesignTablesResult.PSObject.Properties.Name -contains "tableCount") { [int]$courseDesignTablesResult.tableCount } else { $null })
   styledDocxPath = $resolvedStyledDocxOutPath
+  preFrameFinalDocxPath = $preFrameFinalDocxPath
   styledOutlinePath = $styledOutlinePath
   templateFrameDocxPath = $resolvedTemplateFrameDocxOutPath
   layoutCheckPath = $(if ($shouldRunLayoutCheck) { $layoutCheckPath } else { $null })

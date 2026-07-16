@@ -2,6 +2,8 @@
 
 This example shows how to start the local Web UI and generate DOCX, PDF, and preview PNG artifacts from browser-uploaded materials.
 
+DOCX is the primary output. PDF and preview PNG are optional convenience outputs: the UI first tries LibreOffice / `soffice` for stable headless PDF export. WPS/Microsoft Word COM fallback is disabled by default because it can hang when Office is busy.
+
 ## Start
 
 Install the optional UI dependencies:
@@ -90,9 +92,23 @@ The working files are also kept under:
 outputs/web-ui/
 ```
 
+## PDF And Errors
+
+- For stable PDF export, install LibreOffice and make sure `soffice` is available on `PATH`.
+- If you want to allow WPS/Word fallback, close WPS/Word windows first and start the UI with:
+
+```powershell
+$env:EXPERIMENT_REPORT_ALLOW_OFFICE_COM = "1"
+python web_ui.py
+```
+
+- If PDF export fails, the DOCX still succeeds and remains downloadable.
+- Generation failures are shown with a short human-readable cause, the likely next step, and a log path under the working output directory.
+
 ## Notes
 
 - `快速本地草稿` is the default mode for stable everyday runs.
 - `智能长文（接近对话效果）` uses the local OpenClaw chat gateway when available.
+- `质量模式` defaults to `快速生成`; choose `严格检查` for new or visually risky templates so the UI also checks metadata-table readability.
 - If the chat gateway is unavailable, the UI falls back to `快速本地草稿` and shows the reason in the warning box.
-- PDF export requires WPS, Microsoft Word, or LibreOffice. Preview PNG rendering uses PyMuPDF.
+- PDF export prefers LibreOffice. WPS/Microsoft Word fallback is opt-in with `EXPERIMENT_REPORT_ALLOW_OFFICE_COM=1`. Preview PNG rendering uses PyMuPDF.

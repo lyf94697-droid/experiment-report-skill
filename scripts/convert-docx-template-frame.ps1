@@ -599,6 +599,22 @@ function Remove-CellMargins {
   }
 }
 
+function Get-CellText {
+  param(
+    [AllowNull()]
+    [System.Xml.XmlElement]$Cell,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  if ($null -eq $Cell) {
+    return ""
+  }
+
+  return ((@($Cell.SelectNodes(".//w:t", $NamespaceManager)) | ForEach-Object { $_.InnerText }) -join "").Trim()
+}
+
 function Set-CellWidthAndSpan {
   param(
     [Parameter(Mandatory = $true)]
@@ -646,6 +662,71 @@ function Set-CellWidthAndSpan {
   }
 }
 
+function Test-IsFourColumnMetadataTable {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlElement]$Table,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  $rows = @($Table.SelectNodes("./w:tr", $NamespaceManager))
+  if ($rows.Count -lt 4) {
+    return $false
+  }
+
+  $metadataRowHits = 0
+  $rowsToInspect = [Math]::Min(5, $rows.Count)
+  for ($rowIndex = 0; $rowIndex -lt $rowsToInspect; $rowIndex++) {
+    $cells = @($rows[$rowIndex].SelectNodes("./w:tc", $NamespaceManager))
+    if ($cells.Count -ne 4) {
+      continue
+    }
+
+    $leftLabel = Get-CellText -Cell $cells[0] -NamespaceManager $NamespaceManager
+    $rightLabel = Get-CellText -Cell $cells[2] -NamespaceManager $NamespaceManager
+    if ((-not [string]::IsNullOrWhiteSpace($leftLabel)) -and
+      (-not [string]::IsNullOrWhiteSpace($rightLabel)) -and
+      $leftLabel.Length -le 10 -and
+      $rightLabel.Length -le 10) {
+      $metadataRowHits++
+    }
+  }
+
+  return ($metadataRowHits -ge 3)
+}
+
+function Set-FourColumnMetadataRowsToReadableStandard {
+  param(
+    [Parameter(Mandatory = $true)]
+    [xml]$Document,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlElement]$Table,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  Set-TableGridColumns -Document $Document -Table $Table -NamespaceManager $NamespaceManager -ColumnWidths @(1450, 3590, 1450, 3590)
+
+  $rows = @($Table.SelectNodes("./w:tr", $NamespaceManager))
+  $rowsToFix = [Math]::Min(5, $rows.Count)
+  $columnWidths = @("1450", "3590", "1450", "3590")
+  for ($rowIndex = 0; $rowIndex -lt $rowsToFix; $rowIndex++) {
+    $cells = @($rows[$rowIndex].SelectNodes("./w:tc", $NamespaceManager))
+    if ($cells.Count -ne 4) {
+      continue
+    }
+
+    for ($cellIndex = 0; $cellIndex -lt $cells.Count; $cellIndex++) {
+      Set-CellWidthAndSpan -Document $Document -Cell $cells[$cellIndex] -NamespaceManager $NamespaceManager -WidthValue $columnWidths[$cellIndex] -WidthType "dxa" -GridSpan 1
+      Remove-CellMargins -Cell $cells[$cellIndex] -NamespaceManager $NamespaceManager
+    }
+  }
+}
+
 function Set-MetadataRowsToTemplateStandard {
   param(
     [Parameter(Mandatory = $true)]
@@ -666,7 +747,11 @@ function Set-MetadataRowsToTemplateStandard {
   Set-TableLayout -Document $Document -Table $Table -NamespaceManager $NamespaceManager -LayoutType "fixed"
   Set-TableCellMargins -Document $Document -Table $Table -NamespaceManager $NamespaceManager -TopTwips 0 -LeftTwips $MetadataCellMarginTwips -BottomTwips 0 -RightTwips $MetadataCellMarginTwips
   Set-TableBorders -Document $Document -Table $Table -NamespaceManager $NamespaceManager
-  Set-TableGridColumns -Document $Document -Table $Table -NamespaceManager $NamespaceManager -ColumnWidths @(3535, 426, 1277, 1686, 3156)
+
+  if (Test-IsFourColumnMetadataTable -Table $Table -NamespaceManager $NamespaceManager) {
+    Set-FourColumnMetadataRowsToReadableStandard -Document $Document -Table $Table -NamespaceManager $NamespaceManager
+    return
+  }
 
   $rowSpecs = New-Object object[] 4
   $rowSpecs[0] = @(
@@ -698,6 +783,8 @@ function Set-MetadataRowsToTemplateStandard {
       return
     }
   }
+
+  Set-TableGridColumns -Document $Document -Table $Table -NamespaceManager $NamespaceManager -ColumnWidths @(3535, 426, 1277, 1686, 3156)
 
   for ($rowIndex = 0; $rowIndex -lt $rowSpecs.Count; $rowIndex++) {
     $cells = @($rows[$rowIndex].SelectNodes("./w:tc", $NamespaceManager))
@@ -1067,7 +1154,7 @@ function Ensure-FirstPageBottomFrameFooter {
 
   $wNs = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   $wordDir = Join-Path $PackageDirectory "word"
-  $relsPath = Join-Path $wordDir "_rels\document.xml.rels"
+  $relsPath = [System.IO.Path]::Combine($wordDir, "_rels", "document.xml.rels")
   $contentTypesPath = Join-Path $PackageDirectory "[Content_Types].xml"
   $pageMargins = $SectionProperties.SelectSingleNode("w:pgMar", $NamespaceManager)
   $pageSize = $SectionProperties.SelectSingleNode("w:pgSz", $NamespaceManager)
@@ -1242,7 +1329,7 @@ try {
   Copy-Item -LiteralPath $resolvedDocxPath -Destination $sourceZipPath
   [System.IO.Compression.ZipFile]::ExtractToDirectory($sourceZipPath, $unzipDir)
 
-  $documentXmlPath = Join-Path $unzipDir "word\document.xml"
+  $documentXmlPath = [System.IO.Path]::Combine($unzipDir, "word", "document.xml")
   if (-not (Test-Path -LiteralPath $documentXmlPath)) {
     throw "The docx package is missing word/document.xml: $resolvedDocxPath"
   }

@@ -14,23 +14,23 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-  $OutputDir = Join-Path $repoRoot ("tests-output\one-click-demo-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+  $OutputDir = [System.IO.Path]::Combine($repoRoot, "tests-output", ("one-click-demo-" + (Get-Date -Format "yyyyMMdd-HHmmss")))
 }
 
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Path $resolvedOutputDir -Force | Out-Null
 
-$templatePath = (Resolve-Path (Join-Path $repoRoot "examples\report-templates\experiment-report-template.docx")).Path
-$reportPath = (Resolve-Path (Join-Path $repoRoot "examples\demo-one-click\report.txt")).Path
-$metadataPath = (Resolve-Path (Join-Path $repoRoot "examples\demo-one-click\metadata.json")).Path
-$requirementsPath = (Resolve-Path (Join-Path $repoRoot "examples\demo-one-click\requirements.json")).Path
-$imageSpecsTemplatePath = (Resolve-Path (Join-Path $repoRoot "examples\docx-image-specs-row.json")).Path
+$templatePath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "report-templates", "experiment-report-template.docx"))).Path
+$reportPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "report.txt"))).Path
+$metadataPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "metadata.json"))).Path
+$requirementsPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "requirements.json"))).Path
+$imageSpecsTemplatePath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "docx-image-specs-row.json"))).Path
 $imageSpecs = (Get-Content -LiteralPath $imageSpecsTemplatePath -Raw -Encoding UTF8) | ConvertFrom-Json
 $demoAssetPaths = @(
-  (Resolve-Path (Join-Path $repoRoot "demo\assets\step-network-config.png")).Path,
-  (Resolve-Path (Join-Path $repoRoot "demo\assets\step-ipconfig.png")).Path,
-  (Resolve-Path (Join-Path $repoRoot "demo\assets\result-ping.png")).Path,
-  (Resolve-Path (Join-Path $repoRoot "demo\assets\result-arp.png")).Path
+  (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "demo", "assets", "step-network-config.png"))).Path,
+  (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "demo", "assets", "step-ipconfig.png"))).Path,
+  (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "demo", "assets", "result-ping.png"))).Path,
+  (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "demo", "assets", "result-arp.png"))).Path
 )
 
 for ($index = 0; $index -lt @($imageSpecs.images).Count; $index++) {
@@ -39,7 +39,7 @@ for ($index = 0; $index -lt @($imageSpecs.images).Count; $index++) {
 
 $imageSpecsJson = $imageSpecs | ConvertTo-Json -Depth 8
 
-& (Join-Path $repoRoot "scripts\build-report.ps1") `
+& ([System.IO.Path]::Combine($repoRoot, "scripts", "build-report.ps1")) `
   -TemplatePath $templatePath `
   -ReportPath $reportPath `
   -MetadataPath $metadataPath `

@@ -18,6 +18,19 @@ function Assert-True {
   }
 }
 
+function Join-RepoRelativePath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$RelativePath
+  )
+
+  $parts = @($RelativePath -split '[\\/]+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  return [System.IO.Path]::Combine([string[]](@($RepoRoot) + $parts))
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 
 $requiredFiles = @(
@@ -45,7 +58,7 @@ $requiredFiles = @(
 )
 
 foreach ($relativePath in $requiredFiles) {
-  $path = Join-Path $repoRoot $relativePath
+  $path = Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath $relativePath
   Assert-True -Condition (Test-Path -LiteralPath $path -PathType Leaf) -Message "Missing required project-readiness file: $relativePath"
 }
 
@@ -61,33 +74,33 @@ foreach ($requiredReadmeMarker in @(
   Assert-True -Condition $hasRequiredReadmeMarker -Message "README is missing marker: $requiredReadmeMarker"
 }
 
-$docsReadme = Get-Content -LiteralPath (Join-Path $repoRoot "docs\README.md") -Raw -Encoding UTF8
+$docsReadme = Get-Content -LiteralPath (Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath "docs/README.md") -Raw -Encoding UTF8
 foreach ($requiredDocLink in @("usage-flow.md", "template-filling.md", "csdn-reference-policy.md", "screenshot-evidence.md")) {
   $requiredDocLinkPattern = [regex]::Escape($requiredDocLink)
   $hasRequiredDocLink = $docsReadme -match $requiredDocLinkPattern
   Assert-True -Condition $hasRequiredDocLink -Message "docs/README.md is missing link: $requiredDocLink"
 }
 
-$examplesReadme = Get-Content -LiteralPath (Join-Path $repoRoot "examples\README.md") -Raw -Encoding UTF8
+$examplesReadme = Get-Content -LiteralPath (Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath "examples/README.md") -Raw -Encoding UTF8
 foreach ($requiredCase in @("network-dos", "os-process-scheduling", "course-design-student-management")) {
   $requiredCasePattern = [regex]::Escape($requiredCase)
   $hasRequiredCase = $examplesReadme -match $requiredCasePattern
   Assert-True -Condition $hasRequiredCase -Message "examples/README.md is missing case: $requiredCase"
 }
 
-$csdnDoc = Get-Content -LiteralPath (Join-Path $repoRoot "docs\csdn-reference-policy.md") -Raw -Encoding UTF8
+$csdnDoc = Get-Content -LiteralPath (Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath "docs/csdn-reference-policy.md") -Raw -Encoding UTF8
 $csdnDocHasCopyMarker = $csdnDoc -match "project-readiness:do-not-copy"
 $csdnDocHasFactMarker = $csdnDoc -match "project-readiness:fact-source"
 Assert-True -Condition $csdnDocHasCopyMarker -Message "CSDN policy doc should include the do-not-copy marker."
 Assert-True -Condition $csdnDocHasFactMarker -Message "CSDN policy doc should distinguish facts from wording."
 
-$screenshotDoc = Get-Content -LiteralPath (Join-Path $repoRoot "docs\screenshot-evidence.md") -Raw -Encoding UTF8
+$screenshotDoc = Get-Content -LiteralPath (Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath "docs/screenshot-evidence.md") -Raw -Encoding UTF8
 $screenshotDocMentionsSpecs = $screenshotDoc -match "image-specs"
 $screenshotDocMentionsCaptions = $screenshotDoc -match "project-readiness:caption-policy"
 Assert-True -Condition $screenshotDocMentionsSpecs -Message "Screenshot evidence doc should mention image-specs."
 Assert-True -Condition $screenshotDocMentionsCaptions -Message "Screenshot evidence doc should mention captions."
 
-$jsonFiles = Get-ChildItem -LiteralPath (Join-Path $repoRoot "examples\cases") -Recurse -Filter "*.json" -File
+$jsonFiles = Get-ChildItem -LiteralPath (Join-RepoRelativePath -RepoRoot $repoRoot -RelativePath "examples/cases") -Recurse -Filter "*.json" -File
 foreach ($jsonFile in $jsonFiles) {
   try {
     Get-Content -LiteralPath $jsonFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json | Out-Null

@@ -59,7 +59,7 @@ $userPrompt = if (-not [string]::IsNullOrWhiteSpace($PromptPath)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutFile)) {
-  $OutFile = Join-Path $repoRoot ("tests-output\generated-report-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".txt")
+  $OutFile = [System.IO.Path]::Combine($repoRoot, "tests-output", ("generated-report-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".txt"))
 }
 
 $resolvedOutFile = [System.IO.Path]::GetFullPath($OutFile)
@@ -69,7 +69,7 @@ if (-not [string]::IsNullOrWhiteSpace($outDir)) {
 }
 
 $preparedPromptPath = Join-Path $outDir (([System.IO.Path]::GetFileNameWithoutExtension($resolvedOutFile)) + ".prepared-prompt.txt")
-$preparedPromptResult = & (Join-Path $repoRoot "scripts\prepare-report-prompt.ps1") `
+$preparedPromptResult = & ([System.IO.Path]::Combine($repoRoot, "scripts", "prepare-report-prompt.ps1")) `
   -PromptText $userPrompt `
   -OutFile $preparedPromptPath `
   -ReferenceTextPaths $ReferenceTextPaths `
@@ -134,7 +134,7 @@ $messageFile = Join-Path $outDir (([System.IO.Path]::GetFileNameWithoutExtension
 [System.IO.File]::WriteAllText($messageFile, $messageText, (New-Object System.Text.UTF8Encoding($true)))
 
 if (-not $SkipSessionReset) {
-  & (Join-Path $repoRoot "scripts\reset-openclaw-session.ps1") -SessionKey $SessionKey | Out-Null
+  & ([System.IO.Path]::Combine($repoRoot, "scripts", "reset-openclaw-session.ps1")) -SessionKey $SessionKey | Out-Null
 }
 
 $nodeScript = @'

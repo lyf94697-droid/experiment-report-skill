@@ -1614,10 +1614,10 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 try {
   [System.IO.Compression.ZipFile]::ExtractToDirectory($resolvedDocxPath, $tempRoot)
 
-  $documentXmlPath = Join-Path $tempRoot "word\document.xml"
-  $relationshipsPath = Join-Path $tempRoot "word\_rels\document.xml.rels"
+  $documentXmlPath = [System.IO.Path]::Combine($tempRoot, "word", "document.xml")
+  $relationshipsPath = [System.IO.Path]::Combine($tempRoot, "word", "_rels", "document.xml.rels")
   $contentTypesPath = Join-Path $tempRoot "[Content_Types].xml"
-  $mediaDirectory = Join-Path $tempRoot "word\media"
+  $mediaDirectory = [System.IO.Path]::Combine($tempRoot, "word", "media")
 
   if (-not (Test-Path -LiteralPath $documentXmlPath)) {
     throw "word/document.xml was not found in $resolvedDocxPath"

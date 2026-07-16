@@ -97,8 +97,18 @@ if ([string]::IsNullOrWhiteSpace($TargetDir)) {
       $TargetDir = Join-Path (Join-Path $agentsRoot "skills") $skillName
     }
     default {
-      $codexRoot = if ([string]::IsNullOrWhiteSpace($CodexHome)) { Join-Path $HOME ".codex" } else { $CodexHome }
-      $TargetDir = Join-Path (Join-Path $codexRoot "skills") $skillName
+      if ($PSBoundParameters.ContainsKey("AgentsHome") -or $PSBoundParameters.ContainsKey("OpenClawHome")) {
+        if (-not [string]::IsNullOrWhiteSpace($AgentsHome)) {
+          $TargetDir = Join-Path (Join-Path $AgentsHome "skills") $skillName
+        } elseif (-not [string]::IsNullOrWhiteSpace($OpenClawHome)) {
+          $TargetDir = Join-Path (Join-Path $OpenClawHome "skills") $skillName
+        } else {
+          $TargetDir = Join-Path (Join-Path (Join-Path $HOME ".agents") "skills") $skillName
+        }
+      } else {
+        $codexRoot = if ([string]::IsNullOrWhiteSpace($CodexHome)) { Join-Path $HOME ".codex" } else { $CodexHome }
+        $TargetDir = Join-Path (Join-Path $codexRoot "skills") $skillName
+      }
     }
   }
 }

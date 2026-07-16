@@ -2192,8 +2192,10 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   Assert-True -Condition ([string]$buildReportSummary.styleProfile -eq 'excellent') -Message 'build-report summary should resolve experiment reports to the excellent-example style profile.'
   Assert-True -Condition ([string]$buildReportSummary.styleProfileReason -match 'explicitly requested') -Message 'build-report summary is missing the resolved excellent-style reason.'
   Assert-True -Condition ([int]$buildReportSummary.appliedStyleSettings.BodyLineTwips -eq 310) -Message 'build-report summary is missing the overridden style settings from the custom profile file.'
-  Assert-True -Condition ((Split-Path -Leaf $buildReportSummary.finalDocxPath) -eq 'sample-template.filled.images.styled.docx') -Message 'build-report summary is missing the expected final docx path.'
+  Assert-True -Condition ((Split-Path -Leaf $buildReportSummary.finalDocxPath) -eq 'sample-template.filled.images.styled.template-frame.docx') -Message 'build-report summary should use the template-frame docx as the final docx path.'
+  Assert-True -Condition ((Split-Path -Leaf $buildReportSummary.preFrameFinalDocxPath) -eq 'sample-template.filled.images.styled.docx') -Message 'build-report summary is missing the pre-frame styled docx path.'
   Assert-True -Condition (Test-Path -LiteralPath ([string]$buildReportSummary.templateFrameDocxPath)) -Message 'build-report summary is missing the template-frame docx path.'
+  Assert-True -Condition ([string]$buildReportSummary.finalDocxPath -eq [string]$buildReportSummary.templateFrameDocxPath) -Message 'build-report final docx path should point to the template-frame docx.'
   $buildTemplateFrameInspect = Join-Path $tempRoot 'build-template-frame-inspect'
   [System.IO.Compression.ZipFile]::ExtractToDirectory([string]$buildReportSummary.templateFrameDocxPath, $buildTemplateFrameInspect)
   [xml]$buildTemplateFrameXml = [System.IO.File]::ReadAllText((Join-Path $buildTemplateFrameInspect 'word\document.xml'), (New-Object System.Text.UTF8Encoding($false)))
@@ -2232,6 +2234,8 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   $buildTemplateFrameFooterText = [System.IO.File]::ReadAllText($buildTemplateFrameFooterPath, (New-Object System.Text.UTF8Encoding($false)))
   Assert-True -Condition ($buildTemplateFrameFooterText -match 'FirstPageFrameBottom') -Message 'Template-frame docx first-page footer is missing the bottom frame line.'
   Assert-True -Condition ($buildTemplateFrameFooterText -notmatch '<w:tbl') -Message 'Template-frame docx first-page footer frame must not use a layout-consuming table.'
+  $buildStyledFrameGuard = ((& (Join-Path $repoRoot 'scripts\check-docx-layout.ps1') -DocxPath ([string]$buildReportSummary.preFrameFinalDocxPath) -ExpectedImageCount 4 -ExpectedCaptionCount 4 -RequireTemplateFrame -Format json) | Out-String) | ConvertFrom-Json
+  Assert-True -Condition (-not [bool]$buildStyledFrameGuard.passed) -Message 'Layout checker should reject the unframed styled docx when a template frame is required.'
   Remove-Item -LiteralPath $buildTemplateFrameInspect -Recurse -Force
   $results.Add('build-report pipeline OK') | Out-Null
 

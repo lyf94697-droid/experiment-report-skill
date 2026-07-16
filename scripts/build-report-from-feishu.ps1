@@ -83,6 +83,9 @@ param(
   [ValidateSet("fast", "full")]
   [string]$PipelineMode = "fast",
 
+  [ValidateSet("fast", "strict")]
+  [string]$QualityMode = "fast",
+
   [ValidateSet("auto", "default", "compact", "school", "excellent")]
   [string]$StyleProfile = "auto",
 
@@ -97,6 +100,18 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "report-defaults.ps1")
 . (Join-Path $PSScriptRoot "report-profiles.ps1")
+
+function Get-RepoScriptPath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$ScriptName
+  )
+
+  return [System.IO.Path]::Combine($RepoRoot, "scripts", $ScriptName)
+}
 
 function Resolve-AbsolutePathIfProvided {
   param(
@@ -252,7 +267,7 @@ if ([string]::IsNullOrWhiteSpace($resolvedReportPath)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDir)) {
-  $OutputDir = Join-Path $repoRoot ("tests-output\feishu-build-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+  $OutputDir = [System.IO.Path]::Combine($repoRoot, "tests-output", ("feishu-build-" + (Get-Date -Format "yyyyMMdd-HHmmss")))
 }
 
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
@@ -300,6 +315,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     OutputDir = $resolvedArtifactsDir
     StyleFinalDocx = $true
     PipelineMode = $PipelineMode
+    QualityMode = $QualityMode
     StyleProfile = $StyleProfile
   }
 
@@ -341,7 +357,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     $buildParams.CreateTemplateFrameDocx = $true
   }
 
-  & (Join-Path $repoRoot "scripts\build-report.ps1") @buildParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "build-report.ps1") @buildParams | Out-Null
   $innerSummaryPath = Join-Path $resolvedArtifactsDir "summary.json"
   $innerSummary = (Get-Content -LiteralPath $innerSummaryPath -Raw -Encoding UTF8) | ConvertFrom-Json
   $sourceReportPath = $resolvedReportPath
@@ -383,12 +399,13 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
   if (-not [string]::IsNullOrWhiteSpace($ReportProfileName)) { $inputParams.ReportProfileName = [string]$reportProfile.name }
   if (-not [string]::IsNullOrWhiteSpace([string]$reportProfile.resolvedProfilePath)) { $inputParams.ReportProfilePath = [string]$reportProfile.resolvedProfilePath }
 
-  & (Join-Path $repoRoot "scripts\generate-report-inputs.ps1") @inputParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "generate-report-inputs.ps1") @inputParams | Out-Null
 
   $buildParams = @{
     TemplatePath = $resolvedTemplatePath
     OutputDir = $resolvedArtifactsDir
     PipelineMode = $PipelineMode
+    QualityMode = $QualityMode
     StyleProfile = $StyleProfile
     DetailLevel = $DetailLevel
     OpenClawCmd = $OpenClawCmd
@@ -437,7 +454,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     $buildParams.SkipSessionReset = $true
   }
 
-  & (Join-Path $repoRoot "scripts\build-report-from-url.ps1") @buildParams | Out-Null
+  & (Get-RepoScriptPath -RepoRoot $repoRoot -ScriptName "build-report-from-url.ps1") @buildParams | Out-Null
   $innerSummaryPath = Join-Path $resolvedArtifactsDir "url-build-summary.json"
   $innerSummary = (Get-Content -LiteralPath $innerSummaryPath -Raw -Encoding UTF8) | ConvertFrom-Json
   $sourceReportPath = [string]$innerSummary.cleanedReportPath
@@ -564,6 +581,7 @@ $pipelineTrace = [pscustomobject]@{
     mode = $wrapperMode
     generationMode = $generationMode
     pipelineMode = $PipelineMode
+    qualityMode = $QualityMode
     reportProfileName = $(if ($null -ne $innerSummary -and $innerSummary.PSObject.Properties.Name -contains "reportProfileName") { [string]$innerSummary.reportProfileName } else { [string]$reportProfile.name })
     reportProfileDisplayName = $documentLabel
     detailLevel = $DetailLevel
@@ -633,6 +651,7 @@ $pipelineTraceMarkdownLines = New-Object System.Collections.Generic.List[string]
 [void]$pipelineTraceMarkdownLines.Add("- Final docx path: $resolvedFinalDocxDestination")
 [void]$pipelineTraceMarkdownLines.Add("- Template-frame docx path: $resolvedTemplateFrameDocxDestination")
 [void]$pipelineTraceMarkdownLines.Add("- Pipeline mode: $PipelineMode")
+[void]$pipelineTraceMarkdownLines.Add("- Quality mode: $QualityMode")
 [void]$pipelineTraceMarkdownLines.Add("- Wrapper summary path: $resolvedSummaryPath")
 [void]$pipelineTraceMarkdownLines.Add("- Inner summary path: $innerSummaryPath")
 [void]$pipelineTraceMarkdownLines.Add("- Pre-generated report path: $($pipelineTrace.artifacts.preGeneratedReportPath)")
@@ -648,6 +667,7 @@ $wrapperSummary = [pscustomobject]@{
   mode = $wrapperMode
   generationMode = $generationMode
   pipelineMode = $PipelineMode
+  qualityMode = $QualityMode
   reportProfileName = $(if ($null -ne $innerSummary -and $innerSummary.PSObject.Properties.Name -contains "reportProfileName") { [string]$innerSummary.reportProfileName } else { [string]$reportProfile.name })
   reportProfilePath = $(if ($null -ne $innerSummary -and $innerSummary.PSObject.Properties.Name -contains "reportProfilePath") { [string]$innerSummary.reportProfilePath } else { [string]$reportProfile.resolvedProfilePath })
   reportProfileDisplayName = $documentLabel

@@ -24,7 +24,7 @@ function Resolve-ReportProfilePath {
     $ProfileName = "experiment-report"
   }
 
-  return [System.IO.Path]::GetFullPath((Join-Path $RepoRoot ("profiles\{0}.json" -f $ProfileName)))
+  return [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($RepoRoot, "profiles", ("{0}.json" -f $ProfileName)))
 }
 
 function Get-ReportProfile {

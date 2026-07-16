@@ -1153,7 +1153,7 @@ function Get-TemplateAnalysis {
     [string]$DocxPath
   )
 
-  $analysisText = & (Join-Path $repoRoot "scripts\extract-docx-template.ps1") -Path $DocxPath -Format json | Out-String
+  $analysisText = & ([System.IO.Path]::Combine($repoRoot, "scripts", "extract-docx-template.ps1")) -Path $DocxPath -Format json | Out-String
   $analysis = $analysisText | ConvertFrom-Json
   if ($null -eq $analysis) {
     throw "Failed to parse template analysis JSON."

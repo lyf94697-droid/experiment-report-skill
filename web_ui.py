@@ -60,7 +60,7 @@ MAX_UPLOAD_BYTES = 35 * 1024 * 1024
 REFERENCE_FETCH_TIMEOUT = 75
 SMART_GENERATION_TIMEOUT = 420
 LOCAL_GENERATION_TIMEOUT = 240
-PDF_EXPORT_TIMEOUT = 180
+PDF_EXPORT_TIMEOUT = 60
 ALLOWED_UPLOAD_ROOTS = (Path(tempfile.gettempdir()).resolve(),)
 AUTO_TITLE_VALUES = {
     "",
@@ -398,6 +398,46 @@ def write_failure_log(output_dir: Path, command: list[str], stdout: str, stderr:
     return log_path
 
 
+def friendly_generation_error(stage: str, raw_error: str, log_path: Path | None = None) -> str:
+    text = (raw_error or "").strip()
+    hints: list[str] = [f"{stage}失败。"]
+    lower_text = text.lower()
+    if "cannot find path" in lower_text or "找不到" in text:
+        hints.append("有文件路径不存在，请检查模板、截图文件夹、代码文件或输出目录。")
+    if "template-frame" in lower_text or "page frame" in lower_text or "bottom frame" in lower_text:
+        hints.append("外框检查未通过：最终 DOCX 必须使用带外框版本，且第一页底线不能丢。")
+    if "layout check failed" in lower_text:
+        hints.append("版式检查未通过，请查看生成目录里的 layout-check.json。")
+    if "timed out" in lower_text or "timeout" in lower_text:
+        hints.append("处理超时。可以先关闭 WPS/Word，或取消 PDF/预览图只生成 DOCX。")
+    if "json" in lower_text:
+        hints.append("输入配置格式异常，请检查图片规格、元数据或实验要求。")
+    if text:
+        hints.append("原始错误：" + text[-1200:])
+    if log_path is not None:
+        hints.append(f"详细日志：{log_path}")
+    return "\n".join(hints)
+
+
+def compact_powershell_error(raw_error: str) -> str:
+    text = (raw_error or "").strip()
+    if not text:
+        return "未知错误"
+    cleaned_lines: list[str] = []
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("At ") or line.startswith("+ ") or line.startswith("~"):
+            break
+        if line.startswith("+ CategoryInfo") or line.startswith("+ FullyQualifiedErrorId"):
+            continue
+        cleaned_lines.append(line)
+        if len(cleaned_lines) >= 4:
+            break
+    return "\n".join(cleaned_lines) or text.splitlines()[0].strip()
+
+
 def write_smart_runner(output_dir: Path, payload: dict[str, Any]) -> tuple[Path, Path]:
     args_path = output_dir / "smart-runner-args.json"
     runner_path = output_dir / "run-smart-pipeline.ps1"
@@ -426,6 +466,7 @@ $params = @{
   OutputDir = [string]$payload.OutputDir
   FinalDocxPath = [string]$payload.FinalDocxPath
   PipelineMode = [string]$payload.PipelineMode
+  QualityMode = [string]$payload.QualityMode
   StyleProfile = [string]$payload.StyleProfile
   DetailLevel = [string]$payload.DetailLevel
 }
@@ -1041,16 +1082,20 @@ def build_metadata(
         "课程名称": course_name.strip(),
         "实验名称": experiment_name.strip(),
         "题目名称": experiment_name.strip(),
+        "指导教师": "未填写",
         "实验性质": property_name,
         "日期": today,
         "实验时间": today,
+        "实验地点": "未填写",
         "Name": student_name.strip(),
         "StudentId": student_id.strip(),
         "ClassName": class_name.strip(),
+        "TeacherName": "未填写",
         "CourseName": course_name.strip(),
         "ExperimentName": experiment_name.strip(),
         "ExperimentProperty": property_name,
         "ExperimentDate": today,
+        "ExperimentLocation": "未填写",
     }
 
 
@@ -1118,6 +1163,7 @@ def run_smart_pipeline(
     output_dir: Path,
     template_path: Path,
     report_profile: str,
+    quality_mode: str,
     detail_level: str,
     prompt_path: Path,
     reference_paths: list[Path],
@@ -1146,6 +1192,7 @@ def run_smart_pipeline(
             "OutputDir": str(pipeline_dir),
             "FinalDocxPath": str(final_docx_path),
             "PipelineMode": "fast",
+            "QualityMode": quality_mode,
             "StyleProfile": "excellent",
             "DetailLevel": detail_level,
             "CreateTemplateFrameDocx": report_profile == "experiment-report",
@@ -1164,11 +1211,15 @@ def run_smart_pipeline(
         str(args_path),
     ]
 
-    result = run_command(command, cwd=REPO_ROOT, timeout=SMART_GENERATION_TIMEOUT)
+    try:
+        result = run_command(command, cwd=REPO_ROOT, timeout=SMART_GENERATION_TIMEOUT)
+    except subprocess.TimeoutExpired as exc:
+        log_path = write_failure_log(output_dir, command, str(exc.stdout or ""), str(exc.stderr or ""))
+        raise RuntimeError(friendly_generation_error("智能长文生成", f"timeout after {SMART_GENERATION_TIMEOUT} seconds", log_path)) from exc
     if result.returncode != 0:
         log_path = write_failure_log(output_dir, command, result.stdout, result.stderr)
         error_text = result.stderr.strip() or result.stdout.strip() or "未知错误"
-        raise RuntimeError(f"智能长文生成失败：{error_text[-1800:]}\n日志：{log_path}")
+        raise RuntimeError(friendly_generation_error("智能长文生成", error_text, log_path))
 
     summary_path = pipeline_dir / "url-build-summary.json"
     if not summary_path.exists():
@@ -1182,6 +1233,7 @@ def run_local_pipeline(
     template_path: Path,
     report_profile: str,
     report_type: str,
+    quality_mode: str,
     detail_level: str,
     course_name: str,
     experiment_name: str,
@@ -1246,17 +1298,23 @@ def run_local_pipeline(
         "excellent",
         "-PipelineMode",
         "fast",
+        "-QualityMode",
+        quality_mode,
     ]
     if report_profile == "experiment-report":
         command.append("-CreateTemplateFrameDocx")
     if screenshot_paths:
         command.extend(["-ImageSpecsPath", str(image_specs_path)])
 
-    result = run_command(command, cwd=REPO_ROOT, timeout=LOCAL_GENERATION_TIMEOUT)
+    try:
+        result = run_command(command, cwd=REPO_ROOT, timeout=LOCAL_GENERATION_TIMEOUT)
+    except subprocess.TimeoutExpired as exc:
+        log_path = write_failure_log(output_dir, command, str(exc.stdout or ""), str(exc.stderr or ""))
+        raise RuntimeError(friendly_generation_error("本地草稿生成", f"timeout after {LOCAL_GENERATION_TIMEOUT} seconds", log_path)) from exc
     if result.returncode != 0:
         log_path = write_failure_log(output_dir, command, result.stdout, result.stderr)
         error_text = result.stderr.strip() or result.stdout.strip() or "未知错误"
-        raise RuntimeError(f"本地草稿生成失败：{error_text[-2200:]}\n日志：{log_path}")
+        raise RuntimeError(friendly_generation_error("本地草稿生成", error_text, log_path))
 
     summary_path = pipeline_dir / "summary.json"
     if not summary_path.exists():
@@ -1268,93 +1326,28 @@ def run_local_pipeline(
 def export_docx_to_pdf(docx_path: Path, pdf_path: Path) -> None:
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     powershell = resolve_powershell_executable()
-    script = r'''
-param(
-  [Parameter(Mandatory = $true)]
-  [string]$DocxPath,
-
-  [Parameter(Mandatory = $true)]
-  [string]$PdfPath
-)
-
-$ErrorActionPreference = "Stop"
-$docx = [System.IO.Path]::GetFullPath($DocxPath)
-$pdf = [System.IO.Path]::GetFullPath($PdfPath)
-$parent = Split-Path -Parent $pdf
-if (-not [string]::IsNullOrWhiteSpace($parent)) {
-  New-Item -ItemType Directory -Path $parent -Force | Out-Null
-}
-$errors = New-Object System.Collections.Generic.List[string]
-foreach ($progId in @("KWPS.Application", "Word.Application")) {
-  $app = $null
-  $doc = $null
-  try {
-    $app = New-Object -ComObject $progId
-    $app.Visible = $false
-    $doc = $app.Documents.Open($docx)
-    $doc.ExportAsFixedFormat($pdf, 17)
-    $doc.Close($false)
-    $doc = $null
-    $app.Quit()
-    $app = $null
-    if (Test-Path -LiteralPath $pdf -PathType Leaf) {
-      exit 0
-    }
-  } catch {
-    [void]$errors.Add(("{0}: {1}" -f $progId, $_.Exception.Message))
-  } finally {
-    if ($null -ne $doc) {
-      try { $doc.Close($false) | Out-Null } catch {}
-      try { [Runtime.InteropServices.Marshal]::ReleaseComObject($doc) | Out-Null } catch {}
-    }
-    if ($null -ne $app) {
-      try { $app.Quit() | Out-Null } catch {}
-      try { [Runtime.InteropServices.Marshal]::ReleaseComObject($app) | Out-Null } catch {}
-    }
-    [GC]::Collect()
-    [GC]::WaitForPendingFinalizers()
-  }
-}
-$soffice = Get-Command soffice -ErrorAction SilentlyContinue
-if ($null -ne $soffice -and -not [string]::IsNullOrWhiteSpace($soffice.Source)) {
-  & $soffice.Source --headless --convert-to pdf --outdir $parent $docx | Out-Null
-  $converted = Join-Path $parent (([System.IO.Path]::GetFileNameWithoutExtension($docx)) + ".pdf")
-  if (Test-Path -LiteralPath $converted -PathType Leaf) {
-    if (-not [string]::Equals($converted, $pdf, [System.StringComparison]::OrdinalIgnoreCase)) {
-      Move-Item -LiteralPath $converted -Destination $pdf -Force
-    }
-    exit 0
-  }
-}
-throw ("DOCX 转 PDF 失败：" + ($errors -join " | "))
-'''
-    temp_script = Path(tempfile.gettempdir()) / f"openclaw-docx-to-pdf-{os.getpid()}-{datetime.now().strftime('%H%M%S%f')}.ps1"
-    temp_script.write_text(script, encoding="utf-8-sig")
+    script_path = REPO_ROOT / "scripts" / "export-docx-pdf.ps1"
+    command = [
+        powershell,
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(script_path),
+        "-DocxPath",
+        str(docx_path),
+        "-PdfPath",
+        str(pdf_path),
+    ]
+    if os.environ.get("EXPERIMENT_REPORT_ALLOW_OFFICE_COM", "").strip() == "1":
+        command.append("-AllowOfficeCom")
     try:
-        result = run_command(
-            [
-                powershell,
-                "-NoProfile",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(temp_script),
-                "-DocxPath",
-                str(docx_path),
-                "-PdfPath",
-                str(pdf_path),
-            ],
-            cwd=REPO_ROOT,
-            timeout=PDF_EXPORT_TIMEOUT,
-        )
+        result = run_command(command, cwd=REPO_ROOT, timeout=PDF_EXPORT_TIMEOUT)
         if result.returncode != 0 or not pdf_path.exists():
             error_text = result.stderr.strip() or result.stdout.strip() or "未知错误"
-            raise RuntimeError(error_text[-1800:])
-    finally:
-        try:
-            temp_script.unlink(missing_ok=True)
-        except OSError:
-            pass
+            raise RuntimeError(compact_powershell_error(error_text))
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("PDF 导出超过 60 秒，已停止等待。DOCX 已生成；建议安装 LibreOffice，或取消 PDF/预览图后先交付 DOCX。") from exc
 
 
 def render_pdf_preview(pdf_path: Path, preview_path: Path) -> None:
@@ -1427,7 +1420,12 @@ def copy_final_artifacts(
         try:
             export_docx_to_pdf(docx_target, pdf_target)
         except Exception as exc:
-            warnings.append(f"PDF 导出失败：{exc}")
+            warnings.append(
+                "PDF 导出失败，但 DOCX 已经生成。"
+                "稳定导出 PDF 建议安装 LibreOffice；如果一定要用 WPS/Word，先关闭所有窗口后设置 "
+                "EXPERIMENT_REPORT_ALLOW_OFFICE_COM=1 再重试。"
+                f"\n原因：{exc}"
+            )
             pdf_target = None
 
     if render_preview:
@@ -1448,6 +1446,7 @@ def generate_report(
     report_type: str,
     generation_mode: str,
     detail_level_label: str,
+    quality_mode_label: str,
     export_pdf_checked: bool,
     render_preview_checked: bool,
     output_root: str,
@@ -1468,6 +1467,7 @@ def generate_report(
     warnings: list[str] = []
     generation_mode = str(generation_mode or "")
     detail_level_label = str(detail_level_label or "")
+    quality_mode_label = str(quality_mode_label or "")
     output_root = str(output_root or "")
     requirement_text = str(requirement_text or "")
     reference_links = str(reference_links or "")
@@ -1507,6 +1507,7 @@ def generate_report(
         return "生成失败", "请先填写：" + "、".join(missing), None, None, None, None
 
     detail_level = "full" if "长" in detail_level_label or "完整" in detail_level_label else "standard"
+    quality_mode = "strict" if "严格" in quality_mode_label else "fast"
     report_profile, _ = resolve_report_profile(report_type)
     reference_urls, reference_notes = parse_reference_input(reference_links)
 
@@ -1602,6 +1603,7 @@ def generate_report(
                 output_dir=output_dir,
                 template_path=copied_template,
                 report_profile=report_profile,
+                quality_mode=quality_mode,
                 detail_level=detail_level,
                 prompt_path=prompt_path,
                 reference_paths=reference_paths,
@@ -1621,6 +1623,7 @@ def generate_report(
                     template_path=copied_template,
                     report_profile=report_profile,
                     report_type=report_type,
+                    quality_mode=quality_mode,
                     detail_level=detail_level,
                     course_name=course_name.strip(),
                     experiment_name=experiment_name.strip(),
@@ -1645,6 +1648,7 @@ def generate_report(
                 template_path=copied_template,
                 report_profile=report_profile,
                 report_type=report_type,
+                quality_mode=quality_mode,
                 detail_level=detail_level,
                 course_name=course_name.strip(),
                 experiment_name=experiment_name.strip(),
@@ -1686,6 +1690,7 @@ def generate_report(
     status_lines = [
         "生成成功",
         f"生成方式：{generation_used}",
+        f"质量模式：{'严格检查' if quality_mode == 'strict' else '快速生成'}",
         f"工作目录：{output_dir}",
         f"摘要文件：{summary_path}",
         f"DOCX：{final_docx}",
@@ -1723,6 +1728,11 @@ def create_app() -> gr.Blocks:
                 label="正文长度",
                 choices=["长正文（推荐）", "标准正文"],
                 value="长正文（推荐）",
+            )
+            quality_mode = gr.Radio(
+                label="质量模式",
+                choices=["快速生成", "严格检查"],
+                value="快速生成",
             )
 
         with gr.Row():
@@ -1834,6 +1844,7 @@ def create_app() -> gr.Blocks:
                 report_type,
                 generation_mode,
                 detail_level,
+                quality_mode,
                 export_pdf_checked,
                 render_preview_checked,
                 output_root,

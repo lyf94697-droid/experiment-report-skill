@@ -11,6 +11,10 @@ param(
 
   [int]$ExpectedCaptionCount = -1,
 
+  [switch]$RequireTemplateFrame,
+
+  [switch]$RequireReadableMetadata,
+
   [string]$OutFile,
 
   [ValidateSet("json", "markdown")]
@@ -135,6 +139,80 @@ function ConvertTo-IntegerFromDigitString {
   }
 
   return $value
+}
+
+function Get-AttributeValue {
+  param(
+    [AllowNull()]
+    [System.Xml.XmlNode]$Node,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Name,
+
+    [string]$NamespaceUri = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  )
+
+  if ($null -eq $Node) {
+    return $null
+  }
+
+  return $Node.GetAttribute($Name, $NamespaceUri)
+}
+
+function Get-CellText {
+  param(
+    [AllowNull()]
+    [System.Xml.XmlNode]$Cell,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  if ($null -eq $Cell) {
+    return ""
+  }
+
+  return ((@($Cell.SelectNodes(".//w:t", $NamespaceManager)) | ForEach-Object { $_.InnerText }) -join "").Trim()
+}
+
+function Get-CellWidthTwips {
+  param(
+    [AllowNull()]
+    [System.Xml.XmlNode]$Cell,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  if ($null -eq $Cell) {
+    return $null
+  }
+
+  $widthNode = $Cell.SelectSingleNode("./w:tcPr/w:tcW", $NamespaceManager)
+  if ($null -eq $widthNode) {
+    return $null
+  }
+
+  $value = Get-AttributeValue -Node $widthNode -Name "w"
+  $parsed = 0
+  if ([int]::TryParse($value, [ref]$parsed)) {
+    return $parsed
+  }
+
+  return $null
+}
+
+function Test-IsMetadataLabelText {
+  param(
+    [AllowNull()]
+    [string]$Text
+  )
+
+  if ([string]::IsNullOrWhiteSpace($Text)) {
+    return $false
+  }
+
+  return ($Text.Trim() -match '^(姓名|学号|班级|指导教师|课程名称|实验名称|实验性质|实验时间|实验地点|题目名称)$')
 }
 
 function New-LayoutCheckMessage {
@@ -329,6 +407,115 @@ try {
     Add-Finding -Findings $errors -Code "remaining-placeholders" -Message ("Found {0} possible unfilled placeholders." -f $placeholderMatches.Count)
   }
 
+  $templateFrameChecks = [pscustomobject]@{
+    required = [bool]$RequireTemplateFrame
+    hasTitlePage = $false
+    hasNotFirstPageFrame = $false
+    closedPageFrameSides = @()
+    hasFirstPageFooter = $false
+    hasFirstPageBottomLine = $false
+  }
+
+  if ($RequireTemplateFrame) {
+    $titlePageCount = @($documentXml.SelectNodes("//w:sectPr/w:titlePg", $documentNamespaceManager)).Count
+    $templateFrameChecks.hasTitlePage = ($titlePageCount -ge 1)
+    if (-not $templateFrameChecks.hasTitlePage) {
+      Add-Finding -Findings $errors -Code "template-frame-title-page-missing" -Message "Template-frame docx must keep the title outside the first-page frame with a title-page section marker."
+    }
+
+    $notFirstPageFrameCount = @($documentXml.SelectNodes("//w:sectPr/w:pgBorders[@w:display='notFirstPage']", $documentNamespaceManager)).Count
+    $templateFrameChecks.hasNotFirstPageFrame = ($notFirstPageFrameCount -ge 1)
+    if (-not $templateFrameChecks.hasNotFirstPageFrame) {
+      Add-Finding -Findings $errors -Code "template-frame-page-frame-missing" -Message "Template-frame docx is missing the notFirstPage page border frame."
+    }
+
+    $closedPageFrameSides = New-Object System.Collections.Generic.List[string]
+    foreach ($pageFrameSide in @("top", "left", "bottom", "right")) {
+      $sideNodes = @($documentXml.SelectNodes(("//w:sectPr/w:pgBorders/w:{0}" -f $pageFrameSide), $documentNamespaceManager))
+      $hasSingleSide = $false
+      foreach ($sideNode in $sideNodes) {
+        if ((Get-AttributeValue -Node $sideNode -Name "val") -eq "single") {
+          $hasSingleSide = $true
+          break
+        }
+      }
+
+      if ($hasSingleSide) {
+        [void]$closedPageFrameSides.Add($pageFrameSide)
+      } else {
+        Add-Finding -Findings $errors -Code "template-frame-side-missing" -Message ("Template-frame docx is missing the closed page frame side: {0}." -f $pageFrameSide)
+      }
+    }
+    $templateFrameChecks.closedPageFrameSides = @($closedPageFrameSides)
+
+    $firstFooterRefs = @($documentXml.SelectNodes("//w:sectPr/w:footerReference[@w:type='first']", $documentNamespaceManager))
+    $templateFrameChecks.hasFirstPageFooter = ($firstFooterRefs.Count -ge 1)
+    if (-not $templateFrameChecks.hasFirstPageFooter) {
+      Add-Finding -Findings $errors -Code "template-frame-first-footer-missing" -Message "Template-frame docx is missing the first-page footer used for the bottom frame line."
+    } elseif (-not [string]::IsNullOrWhiteSpace($relationshipsText)) {
+      [xml]$relationshipsXmlForFooter = $relationshipsText
+      $firstFooterRid = Get-AttributeValue -Node $firstFooterRefs[0] -Name "id" -NamespaceUri "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+      $footerRelationship = @($relationshipsXmlForFooter.SelectNodes("//*[local-name()='Relationship']") | Where-Object { $_.GetAttribute("Id") -eq $firstFooterRid }) | Select-Object -First 1
+      if ($null -ne $footerRelationship) {
+        $footerTarget = [string]$footerRelationship.GetAttribute("Target")
+        $footerEntryName = if ($footerTarget.StartsWith("/")) {
+          $footerTarget.TrimStart("/")
+        } else {
+          "word/" + $footerTarget
+        }
+        $footerEntryName = $footerEntryName -replace "\\", "/"
+        $footerText = Get-ZipEntryText -Archive $archive -EntryName $footerEntryName
+        $templateFrameChecks.hasFirstPageBottomLine = (-not [string]::IsNullOrWhiteSpace($footerText) -and $footerText -match "FirstPageFrameBottom")
+      }
+    }
+
+    if (-not $templateFrameChecks.hasFirstPageBottomLine) {
+      Add-Finding -Findings $errors -Code "template-frame-first-page-bottom-missing" -Message "Template-frame docx is missing the first-page bottom frame line."
+    }
+  }
+
+  $metadataReadabilityChecks = [pscustomobject]@{
+    required = [bool]$RequireReadableMetadata
+    suspiciousNarrowValueCells = @()
+  }
+
+  if ($RequireReadableMetadata) {
+    $narrowValueCells = New-Object System.Collections.Generic.List[object]
+    $mainTable = $documentXml.SelectSingleNode("//w:body/w:tbl[1]", $documentNamespaceManager)
+    if ($null -ne $mainTable) {
+      $rows = @($mainTable.SelectNodes("./w:tr", $documentNamespaceManager))
+      $rowsToInspect = [Math]::Min(6, $rows.Count)
+      for ($rowIndex = 0; $rowIndex -lt $rowsToInspect; $rowIndex++) {
+        $cells = @($rows[$rowIndex].SelectNodes("./w:tc", $documentNamespaceManager))
+        for ($cellIndex = 0; $cellIndex -lt $cells.Count; $cellIndex++) {
+          $text = Get-CellText -Cell $cells[$cellIndex] -NamespaceManager $documentNamespaceManager
+          $isLikelyFourColumnLabel = ($cells.Count -eq 4 -and ($cellIndex -eq 0 -or $cellIndex -eq 2) -and $text.Length -le 10)
+          if ([string]::IsNullOrWhiteSpace($text) -or $isLikelyFourColumnLabel -or (Test-IsMetadataLabelText -Text $text)) {
+            continue
+          }
+          $width = Get-CellWidthTwips -Cell $cells[$cellIndex] -NamespaceManager $documentNamespaceManager
+          if ($null -ne $width -and $width -lt 1000 -and $text.Length -ge 2) {
+            [void]$narrowValueCells.Add([pscustomobject]@{
+                row = $rowIndex + 1
+                cell = $cellIndex + 1
+                widthTwips = $width
+                text = $(if ($text.Length -gt 40) { $text.Substring(0, 40) + "..." } else { $text })
+              })
+          }
+        }
+      }
+    }
+
+    $narrowValueCellResults = @()
+    foreach ($narrowValueCell in $narrowValueCells) {
+      $narrowValueCellResults += $narrowValueCell
+    }
+    $metadataReadabilityChecks.suspiciousNarrowValueCells = $narrowValueCellResults
+    if ($narrowValueCells.Count -gt 0) {
+      Add-Finding -Findings $errors -Code "metadata-value-cell-too-narrow" -Message ("Metadata value cells are too narrow and may render vertically in WPS/mobile preview: {0} cell(s)." -f $narrowValueCells.Count)
+    }
+  }
+
   $checkPassed = ($errors.Count -eq 0)
   $layoutMessage = New-LayoutCheckMessage `
     -Passed $checkPassed `
@@ -363,6 +550,8 @@ try {
       captionNumbers = $captionNumbers
       paragraphCount = $paragraphTexts.Count
     }
+    templateFrame = $templateFrameChecks
+    metadataReadability = $metadataReadabilityChecks
     captionNumberCheck = [pscustomobject]@{
       maxNumber = $maxCaptionNumber
       missingNumbers = $missingCaptionNumbers

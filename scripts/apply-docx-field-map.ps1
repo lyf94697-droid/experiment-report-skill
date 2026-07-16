@@ -1025,7 +1025,7 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 try {
   [System.IO.Compression.ZipFile]::ExtractToDirectory($resolvedTemplatePath, $tempRoot)
 
-  $documentXmlPath = Join-Path $tempRoot "word\document.xml"
+  $documentXmlPath = [System.IO.Path]::Combine($tempRoot, "word", "document.xml")
   if (-not (Test-Path -LiteralPath $documentXmlPath)) {
     throw "word/document.xml was not found in $resolvedTemplatePath"
   }
