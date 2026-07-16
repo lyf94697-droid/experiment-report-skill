@@ -56,7 +56,7 @@ param(
 
   [int]$CommandFontHalfPoints = 20,
 
-  [string]$InstitutionName = "云南师范大学信息学院"
+  [string]$InstitutionName = ""
 )
 
 Set-StrictMode -Version Latest
@@ -1838,7 +1838,7 @@ try {
   $useTemplateLikeCompactStyle = ([string]$profileDecision.ResolvedProfile -eq "compact")
   $isExcellentStyle = [string]::Equals([string]$profileDecision.ResolvedProfile, "excellent", [System.StringComparison]::OrdinalIgnoreCase)
   $usePaginationHints = (-not $useTemplateLikeCompactStyle)
-  if ($isExcellentStyle) {
+  if ($isExcellentStyle -and -not [string]::IsNullOrWhiteSpace($InstitutionName)) {
     [void](Ensure-ExcellentInstitutionHeading -Document $documentXml -Body $body -Name $InstitutionName)
   }
 

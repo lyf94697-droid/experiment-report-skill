@@ -22,43 +22,43 @@
     {
       "key": "Purpose",
       "heading": "实验目的",
-      "aliases": ["实验目的"],
+      "aliases": ["实验目的", "实验目标与验收条件", "实验任务", "目标与范围"],
       "minChars": { "standard": 30, "full": 60 }
     },
     {
       "key": "Environment",
       "heading": "实验环境",
-      "aliases": ["实验环境", "实验设备与环境"],
+      "aliases": ["实验环境", "实验设备与环境", "环境、工具与版本", "实验条件", "环境与材料"],
       "minChars": { "standard": 30, "full": 60 }
     },
     {
       "key": "Theory",
       "heading": "实验原理或任务要求",
-      "aliases": ["实验原理或任务要求", "实验原理", "任务要求"],
+      "aliases": ["实验原理或任务要求", "实验原理", "任务要求", "原理与技术方案", "原理与方案"],
       "minChars": { "standard": 30, "full": 80 }
     },
     {
       "key": "Steps",
       "heading": "实验步骤",
-      "aliases": ["实验步骤", "实验过程"],
+      "aliases": ["实验步骤", "实验过程", "实施步骤与关键配置", "方法与步骤"],
       "minChars": { "standard": 60, "full": 140 }
     },
     {
       "key": "Results",
       "heading": "实验结果",
-      "aliases": ["实验结果", "实验现象与结果记录"],
+      "aliases": ["实验结果", "实验现象与结果记录", "实验结果与分析", "测试数据与运行结果", "实验记录", "结果与证据"],
       "minChars": { "standard": 50, "full": 120 }
     },
     {
       "key": "Analysis",
       "heading": "问题分析",
-      "aliases": ["问题分析", "结果分析"],
+      "aliases": ["问题分析", "结果分析", "问题与解决方法", "故障、定位与解决", "故障定位、结果分析与改进", "问题处理", "分析与修正"],
       "minChars": { "standard": 30, "full": 80 }
     },
     {
       "key": "Summary",
       "heading": "实验总结",
-      "aliases": ["实验总结", "总结与思考", "实验小结"],
+      "aliases": ["实验总结", "总结与思考", "实验小结", "实验结论", "结论与体会", "总结"],
       "minChars": { "standard": 30, "full": 80 }
     }
   ],

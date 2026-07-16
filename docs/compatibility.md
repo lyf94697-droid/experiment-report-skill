@@ -21,6 +21,8 @@
 ```powershell
 $env:EXPERIMENT_REPORT_TEMPLATE_PATH = "D:\templates\experiment.docx"
 $env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH = "D:\templates\course-design.docx"
+$env:EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID = "neutral-classic-lab"
+$env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_ID = "neutral-course-design"
 $env:EXPERIMENT_REPORT_OUTPUT_ROOT = "D:\report-output"
 $env:EXPERIMENT_REPORT_CACHE_ROOT = "D:\report-cache"
 $env:EXPERIMENT_REPORT_PYTHON = "C:\Python311\python.exe"
@@ -37,6 +39,7 @@ $env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
 ```json
 {
   "defaultTemplate": "D:\\templates\\experiment.docx",
+  "defaultBuiltInTemplateId": "neutral-classic-lab",
   "outputRoot": "D:\\report-output",
   "cacheRoot": "D:\\report-cache"
 }
@@ -44,10 +47,13 @@ $env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
 
 环境变量优先于配置文件，配置文件优先于仓库默认值。
 
+没有配置外部默认模板时，仓库使用五套中性模板目录。普通实验默认 `neutral-classic-lab`，课程设计默认 `neutral-course-design`；也可通过 `-BuiltInTemplateId` 或 Web UI 下拉框选择其他模板。
+
 ## 模板兼容性
 
 已覆盖的自动化夹具包括：
 
+- 五套仓库中性模板及身份/来源审计
 - 仓库默认模板
 - 4 列学生信息表
 - 5 列学生信息表

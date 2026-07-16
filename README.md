@@ -62,6 +62,18 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 - 生成后用 `format-validation.json` 对照模板契约逐项验证；
 - 只有显式传入 `-TemplateStyleMode normalize -StyleFinalDocx` 时，才应用仓库样式 profile。
 
+如果用户要 DOCX 但尚未说明模板，Skill 会先问一次是否有老师、学校或自己认可的优秀模板。用户上传的模板始终优先；明确没有模板时，再从五套不含学校标识的内置模板中选择：
+
+| ID | 风格 | 适用场景 |
+| --- | --- | --- |
+| `neutral-classic-lab` | 经典实验报告 | 普通课程实验默认选择 |
+| `neutral-bordered-lab` | 闭合外框 | 强调传统纸质版式或页面外框 |
+| `neutral-engineering-lab` | 工程技术 | 计算机网络、操作系统、数据库、Java、Web、Android 等 |
+| `neutral-course-design` | 课程设计 | 课程设计、综合实验和项目报告 |
+| `neutral-modern-minimal` | 现代简洁 | 不要求传统表格式的轻量报告 |
+
+五份 DOCX 都由仓库脚本从零生成，不包含真实学校名、校徽、示例学生身份或第三方图片。公开模板只作为设计原则参考，来源和使用边界记录在 `examples/report-templates/catalog.json`。
+
 图片默认一图一行、图注在下。系统会按内容哈希去重，记录选择和拒绝原因；传入 `-RequestedImageCount` 时会严格满足数量，不会复制图片凑数。
 
 快速模式执行结构、布局和格式检查。严格模式额外执行 `DOCX → PDF → 每页预览 → 视觉检查`；缺少 LibreOffice 或视觉检查失败时，最终状态是 `needs-fix`，不会把未验收结果标成成功。
@@ -281,7 +293,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
 
 | 输入 | 说明 | 示例 |
 | --- | --- | --- |
-| `TemplatePath` | 学校模板或示例模板 | `examples/report-templates/experiment-report-template.docx` |
+| `TemplatePath` | 用户上传的学校或教师模板，优先级最高 | `materials/teacher-template.docx` |
+| `BuiltInTemplateId` | 无用户模板时选择五套中性模板之一 | `neutral-engineering-lab` |
 | `ReportPath` | 已有报告正文 | `examples/sample-report.txt` |
 | `MetadataPath` | 姓名、学号、课程名、实验名等短字段 | `examples/cases/network-dos/metadata.json` |
 | `RequirementsPath` | 章节、关键词和禁用词检查 | `examples/cases/network-dos/requirements.json` |
@@ -321,9 +334,9 @@ tests-output/network-dos-case/
 
 ## 典型案例
 
-- [network-dos](examples/cases/network-dos/README.md)：局域网搭建与 DOS 命令实验，带 4 张截图，可直接跑完整 `docx` 流程
-- [os-process-scheduling](examples/cases/os-process-scheduling/README.md)：操作系统进程调度算法实验，适合看算法类报告正文约束
-- [course-design-student-management](examples/cases/course-design-student-management/README.md)：学生成绩管理系统课程设计，演示 `course-design-report` profile
+- [network-dos](examples/cases/network-dos/README.md)：7 页局域网实验成品，含拓扑、命令证据和排障流程
+- [os-process-scheduling](examples/cases/os-process-scheduling/README.md)：8 页进程调度实验成品，含甘特图、性能指标和回归测试
+- [course-design-student-management](examples/cases/course-design-student-management/README.md)：16 页课程设计成品，含 6 张图和与正文一致的数据库表结构
 
 <!-- project-readiness:limitations -->
 ## 限制说明
@@ -423,10 +436,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\self-check.ps1
 
 仓库包含 Gradio 界面，支持学生信息、课程与实验名称、正文长度、参考链接、对话材料、DOCX/DOC 模板、截图和代码文件。上传模板默认走保真模式，界面会展示阶段进度、模板契约、图片清单、格式检查、视觉检查和质量建议。
 
+界面提供“无上传模板时使用”选项，可自动推荐或手工选择五套中性模板。只要上传了用户模板，该选择就会被忽略。
+
 默认工作目录是仓库下的 `outputs/web-ui/`，不会绑定某个盘符。可通过环境变量或 JSON 配置覆盖：
 
 ```powershell
 $env:EXPERIMENT_REPORT_TEMPLATE_PATH = "D:\templates\experiment.docx"
+$env:EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID = "neutral-engineering-lab"
 $env:EXPERIMENT_REPORT_OUTPUT_ROOT = "D:\report-output"
 $env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
 ```

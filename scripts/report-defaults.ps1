@@ -397,19 +397,115 @@ function Get-ExperimentReportDefaultTemplateCandidates {
     [string]$RepoRoot,
 
     [AllowNull()]
-    [string]$EnvTemplatePath = $env:EXPERIMENT_REPORT_TEMPLATE_PATH
+    [string]$EnvTemplatePath,
+
+    [AllowNull()]
+    [string]$ReportProfileName = "experiment-report",
+
+    [AllowNull()]
+    [string]$ReportProfilePath,
+
+    [AllowNull()]
+    [string]$BuiltInTemplateId
   )
 
   $candidates = New-Object System.Collections.Generic.List[string]
-  if (-not [string]::IsNullOrWhiteSpace($EnvTemplatePath)) {
-    [void]$candidates.Add($EnvTemplatePath)
+  $profileKey = if (-not [string]::IsNullOrWhiteSpace($ReportProfilePath)) {
+    [System.IO.Path]::GetFileNameWithoutExtension($ReportProfilePath)
+  } else {
+    [string]$ReportProfileName
+  }
+  $isCourseDesign = [string]::Equals($profileKey, "course-design-report", [System.StringComparison]::OrdinalIgnoreCase)
+  $effectiveEnvTemplatePath = if (-not [string]::IsNullOrWhiteSpace($EnvTemplatePath)) {
+    $EnvTemplatePath
+  } elseif ($isCourseDesign) {
+    $env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH
+  } else {
+    $env:EXPERIMENT_REPORT_TEMPLATE_PATH
+  }
+  if (-not [string]::IsNullOrWhiteSpace($effectiveEnvTemplatePath)) {
+    [void]$candidates.Add($effectiveEnvTemplatePath)
   }
 
   if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-    [void]$candidates.Add([System.IO.Path]::Combine($RepoRoot, "examples", "report-templates", "experiment-report-template.docx"))
+    $effectiveBuiltInId = if (-not [string]::IsNullOrWhiteSpace($BuiltInTemplateId)) {
+      $BuiltInTemplateId
+    } elseif ($isCourseDesign -and -not [string]::IsNullOrWhiteSpace($env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_ID)) {
+      $env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_ID
+    } elseif (-not $isCourseDesign -and -not [string]::IsNullOrWhiteSpace($env:EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID)) {
+      $env:EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID
+    } elseif ($isCourseDesign) {
+      "neutral-course-design"
+    } else {
+      "neutral-classic-lab"
+    }
+
+    [void]$candidates.Add((Resolve-BuiltInTemplatePath -RepoRoot $RepoRoot -TemplateId $effectiveBuiltInId))
   }
 
   return @($candidates.ToArray())
+}
+
+function Get-BuiltInTemplateCatalog {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot
+  )
+
+  $catalogPath = [System.IO.Path]::Combine($RepoRoot, "examples", "report-templates", "catalog.json")
+  if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
+    throw "Built-in template catalog was not found: $catalogPath"
+  }
+  return ((Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8) | ConvertFrom-Json)
+}
+
+function Resolve-BuiltInTemplatePath {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RepoRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string]$TemplateId
+  )
+
+  $catalog = Get-BuiltInTemplateCatalog -RepoRoot $RepoRoot
+  $entry = @($catalog.templates | Where-Object {
+      [string]::Equals([string]$_.id, $TemplateId, [System.StringComparison]::OrdinalIgnoreCase)
+    } | Select-Object -First 1)
+  if ($entry.Count -eq 0) {
+    $available = @($catalog.templates | ForEach-Object { [string]$_.id })
+    throw ("Unknown built-in template id: {0}. Available: {1}" -f $TemplateId, ($available -join ", "))
+  }
+  $path = [System.IO.Path]::Combine($RepoRoot, "examples", "report-templates", [string]$entry[0].file)
+  if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+    throw "Built-in template file was not found: $path"
+  }
+  return (Resolve-Path -LiteralPath $path).Path
+}
+
+function Get-BuiltInTemplateIdForPath {
+  param(
+    [AllowNull()]
+    [string]$RepoRoot,
+
+    [AllowNull()]
+    [string]$TemplatePath
+  )
+
+  if ([string]::IsNullOrWhiteSpace($RepoRoot) -or [string]::IsNullOrWhiteSpace($TemplatePath)) {
+    return $null
+  }
+  $resolvedTemplatePath = [System.IO.Path]::GetFullPath($TemplatePath)
+  $catalog = Get-BuiltInTemplateCatalog -RepoRoot $RepoRoot
+  foreach ($entry in @($catalog.templates)) {
+    $candidate = [System.IO.Path]::GetFullPath(
+      [System.IO.Path]::Combine($RepoRoot, "examples", "report-templates", [string]$entry.file)
+    )
+    if ([string]::Equals($candidate, $resolvedTemplatePath, [System.StringComparison]::OrdinalIgnoreCase)) {
+      return [string]$entry.id
+    }
+  }
+  return $null
 }
 
 function Resolve-ExperimentReportTemplatePath {
@@ -424,25 +520,28 @@ function Resolve-ExperimentReportTemplatePath {
     [string]$ReportProfilePath,
 
     [AllowNull()]
-    [string]$RepoRoot
+    [string]$RepoRoot,
+
+    [AllowNull()]
+    [string]$BuiltInTemplateId
   )
 
   if (-not [string]::IsNullOrWhiteSpace($TemplatePath)) {
     return (Resolve-Path -LiteralPath $TemplatePath).Path
   }
 
-  if (-not (Test-IsExperimentReportProfile -ReportProfileName $ReportProfileName -ReportProfilePath $ReportProfilePath)) {
-    throw "TemplatePath is required for report profile: $ReportProfileName"
-  }
-
-  $candidates = @(Get-ExperimentReportDefaultTemplateCandidates -RepoRoot $RepoRoot)
+  $candidates = @(Get-ExperimentReportDefaultTemplateCandidates `
+      -RepoRoot $RepoRoot `
+      -ReportProfileName $ReportProfileName `
+      -ReportProfilePath $ReportProfilePath `
+      -BuiltInTemplateId $BuiltInTemplateId)
   foreach ($candidate in $candidates) {
     if (-not [string]::IsNullOrWhiteSpace($candidate) -and (Test-Path -LiteralPath $candidate -PathType Leaf)) {
       return (Resolve-Path -LiteralPath $candidate).Path
     }
   }
 
-  throw ("No experiment-report template was found. Provide -TemplatePath or set EXPERIMENT_REPORT_TEMPLATE_PATH. Checked: {0}" -f ($candidates -join "; "))
+  throw ("No report template was found. Provide -TemplatePath, choose -BuiltInTemplateId, or configure a template environment variable. Checked: {0}" -f ($candidates -join "; "))
 }
 
 function Test-ExperimentReportTemplateFrameDefault {
@@ -454,5 +553,5 @@ function Test-ExperimentReportTemplateFrameDefault {
     [string]$ReportProfilePath
   )
 
-  return (Test-IsExperimentReportProfile -ReportProfileName $ReportProfileName -ReportProfilePath $ReportProfilePath)
+  return $false
 }

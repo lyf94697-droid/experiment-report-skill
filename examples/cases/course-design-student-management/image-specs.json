@@ -1,0 +1,56 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\system-architecture.png",
+      "anchor": "P52",
+      "section": "方案设计与实现",
+      "caption": "图1 学生成绩管理系统总体架构",
+      "widthCm": 15.2
+    },
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\data-model.png",
+      "anchor": "P55",
+      "section": "方案设计与实现",
+      "caption": "图2 学生、课程与成绩核心数据模型",
+      "widthCm": 15.2
+    },
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\student-management-ui.png",
+      "anchor": "P84",
+      "section": "实现结果",
+      "caption": "图3 学生信息管理界面运行结果",
+      "widthCm": 7.5,
+      "layout": {
+        "mode": "row",
+        "columns": 2,
+        "group": "course-design-ui"
+      }
+    },
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\score-entry-ui.png",
+      "anchor": "P84",
+      "section": "实现结果",
+      "caption": "图4 成绩录入与自动计算结果",
+      "widthCm": 7.5,
+      "layout": {
+        "mode": "row",
+        "columns": 2,
+        "group": "course-design-ui"
+      }
+    },
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\statistics-dashboard.png",
+      "anchor": "P87",
+      "section": "实现结果",
+      "caption": "图5 课程成绩统计与分数段分布",
+      "widthCm": 15.2
+    },
+    {
+      "path": ".\\examples\\cases\\course-design-student-management\\assets\\system-tests.png",
+      "anchor": "P90",
+      "section": "实现结果",
+      "caption": "图6 系统关键功能测试记录",
+      "widthCm": 15.2
+    }
+  ]
+}

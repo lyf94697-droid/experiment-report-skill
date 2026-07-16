@@ -1,15 +1,15 @@
 {
   "courseName": "Java 程序设计",
   "experimentName": "学生成绩管理系统",
-  "minChars": 1000,
+  "minChars": 8000,
   "sections": [
-    { "name": "设计目标", "aliases": ["设计目标", "课程设计目的"], "minChars": 60 },
-    { "name": "开发环境", "aliases": ["开发环境", "运行环境"], "minChars": 40 },
-    { "name": "需求分析", "aliases": ["需求分析", "功能需求"], "minChars": 120 },
-    { "name": "方案设计与实现", "aliases": ["方案设计与实现", "总体设计", "详细设计"], "minChars": 180 },
-    { "name": "运行结果", "aliases": ["运行结果", "测试结果"], "minChars": 100 },
-    { "name": "问题与改进", "aliases": ["问题与改进", "问题分析"], "minChars": 80 },
-    { "name": "设计总结", "aliases": ["设计总结", "总结"], "minChars": 60 }
+    { "name": "设计目标", "aliases": ["设计目标", "课程设计目的"], "minChars": 800 },
+    { "name": "开发环境", "aliases": ["开发环境", "运行环境"], "minChars": 600 },
+    { "name": "需求分析", "aliases": ["需求分析", "功能需求"], "minChars": 1100 },
+    { "name": "方案设计与实现", "aliases": ["方案设计与实现", "总体设计", "详细设计"], "minChars": 2400 },
+    { "name": "运行结果", "aliases": ["运行结果", "测试结果", "实现结果"], "minChars": 1100 },
+    { "name": "问题与改进", "aliases": ["问题与改进", "问题分析"], "minChars": 700 },
+    { "name": "设计总结", "aliases": ["设计总结", "总结"], "minChars": 500 }
   ],
   "requiredKeywords": [
     "学生信息",

@@ -16,7 +16,7 @@
 ## 核心文档
 
 - [architecture.md](architecture.md)
-  说明分阶段流水线、`TemplateStyleContract`、保留/规范化模式、图片清单和严格验证链路。
+  说明分阶段流水线、五套中性模板选型、`TemplateStyleContract`、保留/规范化模式、图片清单和严格验证链路。
 
 - [usage-flow.md](usage-flow.md)
   从收集材料、生成正文、填模板、插截图到交付检查的完整流程。
@@ -25,7 +25,7 @@
   解释模板提取、字段映射、章节段落映射、profile 和常见失败处理。
 
 - [compatibility.md](compatibility.md)
-  说明 PowerShell、Python、DOC/DOCX、LibreOffice、Office COM 和跨机器配置。
+  说明 PowerShell、Python、DOC/DOCX、内置模板 ID、LibreOffice、Office COM 和跨机器配置。
 
 - [troubleshooting.md](troubleshooting.md)
   说明严格模式、格式漂移、图片数量、竖排风险、中文路径和缓存排障。

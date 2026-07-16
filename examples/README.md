@@ -25,7 +25,7 @@
   自带演示用的正文、metadata 和 requirements，配合 `scripts/run-one-click-demo.ps1` 直接可跑。
 
 - `report-templates/`
-  仓库内置的示例模板，目前包含实验报告模板和课程设计报告模板。
+  仓库内置的五套中性模板、机器可读目录和两个旧文件名兼容别名。
 
 - `docx-field-map.json`
   字段映射示例，适合看模板填充格式。
@@ -52,4 +52,5 @@
 - 想最快感受效果：先跑 `scripts/run-one-click-demo.ps1`
 - 想看完整场景：从 `cases/network-dos` 开始
 - 想理解 JSON 格式：看 `docx-field-map.json` 和 `docx-image-specs*.json`
+- 没有学校模板：从 `report-templates/README.md` 的五套中性模板中选择
 - 想适配自己的模板：先看 `report-templates/README.md` 和 `../docs/template-filling.md`

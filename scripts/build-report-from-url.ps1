@@ -14,6 +14,8 @@ param(
 
   [string]$TemplatePath,
 
+  [string]$BuiltInTemplateId,
+
   [string]$MetadataPath,
 
   [string]$MetadataJson,
@@ -269,15 +271,13 @@ $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Path $resolvedOutputDir -Force | Out-Null
 
 $templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
-$resolvedTemplatePath = if ([string]::IsNullOrWhiteSpace($TemplatePath) -and -not (Test-IsExperimentReportProfile -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath))) {
-  $null
-} else {
-  Resolve-ExperimentReportTemplatePath `
-    -TemplatePath $TemplatePath `
-    -ReportProfileName ([string]$reportProfile.name) `
-    -ReportProfilePath ([string]$reportProfile.resolvedProfilePath) `
-    -RepoRoot $repoRoot
-}
+$resolvedTemplatePath = Resolve-ExperimentReportTemplatePath `
+  -TemplatePath $TemplatePath `
+  -ReportProfileName ([string]$reportProfile.name) `
+  -ReportProfilePath ([string]$reportProfile.resolvedProfilePath) `
+  -RepoRoot $repoRoot `
+  -BuiltInTemplateId $BuiltInTemplateId
+$resolvedBuiltInTemplateId = Get-BuiltInTemplateIdForPath -RepoRoot $repoRoot -TemplatePath $resolvedTemplatePath
 $resolvedMetadataPath = Resolve-AbsolutePathIfProvided -Path $MetadataPath
 $resolvedRequirementsPath = Resolve-AbsolutePathIfProvided -Path $RequirementsPath
 $resolvedStyleProfilePath = Resolve-AbsolutePathIfProvided -Path $StyleProfilePath
@@ -622,6 +622,8 @@ $wrapperSummary = [pscustomobject]@{
   outputDir = $resolvedOutputDir
   templatePath = $resolvedTemplatePath
   templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
+  templateSelectionSource = $(if (-not [string]::IsNullOrWhiteSpace($TemplatePath)) { "user" } else { "builtin" })
+  builtInTemplateId = $resolvedBuiltInTemplateId
   templateFrameDefaulted = $templateFrameDefaulted
   fixedExperimentReportStyle = (Test-IsExperimentReportProfile -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath))
   reportProfileName = [string]$reportProfile.name

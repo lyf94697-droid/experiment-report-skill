@@ -13,6 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from universal_report.config import load_config
+from universal_report.template_catalog import (
+    load_template_catalog,
+    resolve_template_selection,
+)
 
 try:
     import gradio as gr
@@ -26,6 +30,13 @@ REPO_ROOT = Path(__file__).resolve().parent
 WEB_OUTPUT_ROOT = REPO_ROOT / "outputs" / "web-ui"
 HISTORY_PATH = WEB_OUTPUT_ROOT / "web-ui-history.json"
 APP_CONFIG = load_config(REPO_ROOT)
+APP_TEMPLATE_CATALOG = load_template_catalog(REPO_ROOT)
+BUILTIN_TEMPLATE_CHOICES = ["自动选择（推荐）"] + [
+    str(item["displayName"]) for item in APP_TEMPLATE_CATALOG["templates"]
+]
+BUILTIN_TEMPLATE_PATHS = {
+    str(Path(item["path"]).resolve()) for item in APP_TEMPLATE_CATALOG["templates"]
+}
 DEFAULT_EXPERIMENT_TEMPLATE = Path(str(APP_CONFIG["defaultTemplate"]))
 DEFAULT_COURSE_DESIGN_TEMPLATE = Path(
     os.environ.get(
@@ -759,23 +770,64 @@ def resolve_report_profile(report_type: str) -> tuple[str, Path | None]:
     return "experiment-report", DEFAULT_EXPERIMENT_TEMPLATE if DEFAULT_EXPERIMENT_TEMPLATE.exists() else None
 
 
-def resolve_template_path(template_file: Any, report_type: str) -> Path:
+def resolve_template_path(
+    template_file: Any,
+    report_type: str,
+    built_in_template_choice: str = "自动选择（推荐）",
+    course_name: str = "",
+    request_text: str = "",
+) -> tuple[Path, dict[str, Any]]:
     try:
         uploaded = normalize_upload_path(template_file, label="报告模板")
     except UploadValidationError:
         raise
 
-    report_profile, default_template = resolve_report_profile(report_type)
-    _ = report_profile
-    template_path = uploaded or default_template
+    if uploaded:
+        selection = resolve_template_selection(
+            REPO_ROOT,
+            report_type=report_type,
+            user_template=uploaded,
+        )
+        return Path(selection["path"]), selection
+
+    _, configured_default = resolve_report_profile(report_type)
+    if (
+        configured_default is not None
+        and configured_default.exists()
+        and str(configured_default.resolve()) not in BUILTIN_TEMPLATE_PATHS
+        and str(built_in_template_choice or "").startswith("自动")
+    ):
+        selection = {
+            "source": "configured",
+            "path": str(configured_default.resolve()),
+            "templateId": None,
+            "displayName": configured_default.name,
+            "preserveFormatting": True,
+            "automatic": True,
+            "reason": "未上传模板，使用本机配置的默认模板。",
+        }
+        return configured_default.resolve(), selection
+
+    preference = (
+        "auto"
+        if str(built_in_template_choice or "").startswith("自动")
+        else str(built_in_template_choice or "")
+    )
+    selection = resolve_template_selection(
+        REPO_ROOT,
+        report_type=report_type,
+        course_name=course_name,
+        preference=preference,
+        request_text=request_text,
+    )
+    template_path = Path(selection["path"])
     if template_path is None or not template_path.exists():
         raise UploadValidationError(
-            "未上传模板，也没有找到可用的默认模板。可上传 DOCX/DOC，或通过 "
-            "EXPERIMENT_REPORT_TEMPLATE_PATH / EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH 配置默认模板。"
+            "未上传模板，也没有找到可用的内置或配置模板。请上传 DOCX/DOC，或检查五套内置模板目录。"
         )
     if template_path.suffix.lower() not in TEMPLATE_EXTENSIONS:
         raise UploadValidationError("模板只支持 .docx 或 .doc。")
-    return template_path
+    return template_path, selection
 
 
 def make_base_name(student_id: str, student_name: str, experiment_name: str) -> str:
@@ -1474,6 +1526,7 @@ def copy_final_artifacts(
 
 def generate_report(
     report_type: str,
+    built_in_template_choice: str,
     generation_mode: str,
     detail_level_label: str,
     quality_mode_label: str,
@@ -1498,6 +1551,7 @@ def generate_report(
     progress(0.03, desc="校验输入与解析对话要求")
     warnings: list[str] = []
     generation_mode = str(generation_mode or "")
+    built_in_template_choice = str(built_in_template_choice or "自动选择（推荐）")
     detail_level_label = str(detail_level_label or "")
     quality_mode_label = str(quality_mode_label or "")
     output_root = str(output_root or "")
@@ -1544,7 +1598,17 @@ def generate_report(
     reference_urls, reference_notes = parse_reference_input(reference_links)
 
     try:
-        template_path = resolve_template_path(template_file, report_type)
+        template_path, template_selection = resolve_template_path(
+            template_file,
+            report_type,
+            built_in_template_choice=built_in_template_choice,
+            course_name=course_name,
+            request_text="\n".join(
+                part
+                for part in (effective_requirement_text, chat_request_text)
+                if str(part or "").strip()
+            ),
+        )
         screenshots = require_allowed_extensions(
             normalize_upload_list(screenshot_files, label="运行截图"),
             IMAGE_EXTENSIONS,
@@ -1566,6 +1630,8 @@ def generate_report(
         warnings.append("未上传运行截图，报告会缺少结果证据。")
     if not code_paths:
         warnings.append("未上传代码文件，关键代码部分会以过程说明为主。")
+    if template_selection["source"] == "user" and not built_in_template_choice.startswith("自动"):
+        warnings.append("已上传用户模板，因此忽略内置模板选择并优先保留用户模板格式。")
 
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     title_needs_inference = is_auto_title(experiment_name)
@@ -1744,7 +1810,9 @@ def generate_report(
         f"质量模式：{'严格检查' if quality_mode == 'strict' else '快速生成'}",
         f"流水线状态：{generation_status}",
         f"流水线阶段：{summarize_pipeline_stages(summary)}",
-        f"模板模式：{'保留用户模板格式' if summary.get('templateStylePreserved') else '显式规范化/框架转换'}",
+        f"实际模板：{template_selection['displayName']}（{template_selection['source']}）",
+        f"模板选择原因：{template_selection['reason']}",
+        f"模板模式：{'保留所选模板格式' if summary.get('templateStylePreserved') else '显式规范化/框架转换'}",
         f"建议质量模式：{recommended_mode or '未提供'}",
         f"工作目录：{output_dir}",
         f"摘要文件：{summary_path}",
@@ -1773,8 +1841,8 @@ def create_app() -> gr.Blocks:
     with gr.Blocks(title="实验报告生成 Web UI") as app:
         gr.Markdown("# 实验报告生成 Web UI")
         gr.Markdown(
-            "上传模板时默认保留原有页面、字体、段落、表格、页眉页脚和边框；"
-            "复杂模板建议选择“严格检查”。严格模式需要 LibreOffice 才能完成 PDF 逐页视觉验收。"
+            "先确认：你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？有就上传，系统优先保留原格式；"
+            "没有就从五套不含学校标识的内置模板中选择。复杂模板建议使用“严格检查”。"
         )
 
         with gr.Row():
@@ -1782,6 +1850,13 @@ def create_app() -> gr.Blocks:
                 label="报告类型",
                 choices=["实验报告", "课程设计报告"],
                 value="实验报告",
+            )
+            built_in_template_choice = gr.Dropdown(
+                label="无上传模板时使用",
+                choices=BUILTIN_TEMPLATE_CHOICES,
+                value="自动选择（推荐）",
+                interactive=True,
+                info="用户上传模板始终优先；自动选择会按报告类型、课程和需求推荐。",
             )
             generation_mode = gr.Radio(
                 label="生成方式",
@@ -1909,6 +1984,7 @@ def create_app() -> gr.Blocks:
             fn=generate_report,
             inputs=[
                 report_type,
+                built_in_template_choice,
                 generation_mode,
                 detail_level,
                 quality_mode,

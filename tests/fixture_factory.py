@@ -96,6 +96,8 @@ def make_template(
     outer_table_border: bool = True,
     long_course_name: bool = False,
     include_metadata_table: bool = True,
+    empty_body: bool = False,
+    body_table_after: bool = False,
 ) -> Path:
     columns = [1800, 3000, 1800, 4200] if columns is None else columns
     title_text = "" if blank else "信息学院实验报告"
@@ -147,6 +149,24 @@ def make_template(
     placeholder = (
         '<w:p><w:r><w:t>[[IMAGE:实验结果]]</w:t></w:r></w:p>' if image_placeholder else ""
     )
+    body_paragraph = (
+        "<w:p><w:r/></w:p>"
+        if empty_body
+        else "<w:p><w:r><w:t>掌握实验环境配置、关键操作步骤和结果验证方法。</w:t></w:r></w:p>"
+    )
+    body_table_xml = (
+        """<w:tbl>
+      <w:tblPr><w:tblW w:w="6000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>
+      <w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/></w:tblGrid>
+      <w:tr>
+        <w:tc><w:p><w:r><w:t>模块</w:t></w:r></w:p></w:tc>
+        <w:tc><w:p><w:r><w:t>说明</w:t></w:r></w:p></w:tc>
+      </w:tr>
+    </w:tbl>
+    <w:p><w:r><w:rPr><w:rFonts w:eastAsia="微软雅黑"/><w:sz w:val="19"/></w:rPr><w:t>图1 系统结构图</w:t></w:r></w:p>"""
+        if body_table_after
+        else ""
+    )
     section_xml = []
     for index in range(sections):
         title_page = "<w:titlePg/>" if index == 0 and sections > 1 else ""
@@ -169,7 +189,8 @@ def make_template(
     </w:p>
     {metadata_table_xml}
     <w:p><w:pPr><w:pStyle w:val="HeadingOne"/></w:pPr><w:r><w:t>实验目的</w:t></w:r></w:p>
-    <w:p><w:r><w:t>掌握实验环境配置、关键操作步骤和结果验证方法。</w:t></w:r></w:p>
+    {body_paragraph}
+    {body_table_xml}
     {placeholder}
     {''.join(section_xml)}
   </w:body>

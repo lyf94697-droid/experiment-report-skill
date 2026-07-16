@@ -1,12 +1,12 @@
 # 使用流程
 
-这条流水线把实验报告拆成四类输入：实验要求、参考资料、真实证据、学校模板。项目的目标不是替你凭空写一份报告，而是把这些材料整理成可复查的 `docx` 交付物。
+这条流水线把实验报告拆成四类输入：实验要求、参考资料、真实证据、首选模板。项目的目标不是替你凭空写一份报告，而是把这些材料整理成可复查的 `docx` 交付物。用户模板始终优先；没有用户模板时，从五套不含学校标识的内置模板中选择。
 
 ## 总流程
 
 1. 收集输入材料
    - 实验题目、课程名、姓名、学号、班级、指导教师等基础信息
-   - 实验要求、评分点、老师给的模板或优秀示例
+   - 实验要求、评分点、老师给的模板或优秀示例；如果没有模板，明确报告类型和期望风格
    - 教程链接、CSDN 文章或本地参考资料
    - 真实截图、命令输出、代码片段、实验结果数据
 
@@ -15,7 +15,9 @@
    - 只有教程链接和要求时，可用 Codex 直接整理正文；如需自动长文通道，也可以通过可选 OpenClaw 流程生成正文后再进入模板填充
    - 需要避免照抄参考文章时，按 [CSDN 参考内容如何避免照抄](csdn-reference-policy.md) 处理
 
-3. 填充学校模板
+3. 选择并填充模板
+   - 有老师、学校或自己认可的模板时，优先使用并保持原格式
+   - 没有用户模板时，按报告类型、课程和风格要求从五套中性模板中自动选择，也可显式指定模板 ID
    - 先提取模板结构
    - 生成字段映射
    - 把 metadata 和正文写回 `docx`
@@ -47,19 +49,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\check-project-readiness.ps1
 
 ## 已有正文的本地流程
 
-适合你已经有一份实验报告正文，只想把它填进学校模板并插入截图：
+适合你已经有一份实验报告正文，想使用内置工程技术模板并插入截图：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
-  -TemplatePath ".\examples\report-templates\experiment-report-template.docx" `
+  -BuiltInTemplateId neutral-engineering-lab `
   -ReportPath ".\examples\sample-report.txt" `
   -MetadataPath ".\examples\cases\network-dos\metadata.json" `
   -ImageSpecsPath ".\examples\cases\network-dos\image-specs.json" `
   -RequirementsPath ".\examples\cases\network-dos\requirements.json" `
-  -OutputDir ".\tests-output\network-dos-demo" `
-  -StyleFinalDocx `
-  -StyleProfile auto
+  -OutputDir ".\tests-output\network-dos-demo"
 ```
+
+如有用户模板，把 `-BuiltInTemplateId` 换成 `-TemplatePath "D:\templates\teacher-template.docx"`；用户模板会按保真模式处理。
 
 输出目录会包含：
 
@@ -95,14 +97,12 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-url.ps1 `
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
-  -TemplatePath ".\examples\report-templates\course-design-report-template.docx" `
+  -BuiltInTemplateId neutral-course-design `
   -ReportPath ".\examples\cases\course-design-student-management\report.txt" `
   -MetadataPath ".\examples\cases\course-design-student-management\metadata.json" `
   -RequirementsPath ".\examples\cases\course-design-student-management\requirements.json" `
   -ReportProfileName course-design-report `
-  -OutputDir ".\tests-output\course-design-demo" `
-  -StyleFinalDocx `
-  -StyleProfile auto
+  -OutputDir ".\tests-output\course-design-demo"
 ```
 
 课程设计更重视需求分析、总体设计、模块实现、运行结果和总结，流程图或总体设计图默认按大图处理。
@@ -113,4 +113,5 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
 
 - 运行 `scripts\check-project-readiness.ps1`，确认项目展示材料没有缺文件
 - 跑一次 `scripts\run-one-click-demo.ps1`，确认最小演示链路可用
+- 运行 `python -m universal_report audit-template-catalog --repo-root .`，确认五套内置模板的身份和来源审计通过
 - 对正式报告运行 layout check，并人工打开最终 `docx` 检查图、表、标题和分页

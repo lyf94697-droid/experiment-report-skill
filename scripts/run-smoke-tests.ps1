@@ -743,7 +743,7 @@ URL: https://example.com/network-lab
     $env:EXPERIMENT_REPORT_TEMPLATE_PATH = $defaultTemplateFixture
     $resolvedDefaultTemplatePath = Resolve-ExperimentReportTemplatePath -TemplatePath '' -ReportProfileName 'experiment-report' -RepoRoot $repoRoot
     Assert-True -Condition ([string]$resolvedDefaultTemplatePath -eq [string](Resolve-Path -LiteralPath $defaultTemplateFixture).Path) -Message 'Report-defaults helper did not resolve the default experiment report template path.'
-    Assert-True -Condition (Test-ExperimentReportTemplateFrameDefault -ReportProfileName 'experiment-report') -Message 'Experiment reports should default to template-frame output.'
+    Assert-True -Condition (-not (Test-ExperimentReportTemplateFrameDefault -ReportProfileName 'experiment-report')) -Message 'Built-in templates should preserve their own design instead of forcing legacy template-frame output.'
     Assert-True -Condition (-not (Test-ExperimentReportTemplateFrameDefault -ReportProfileName 'course-design-report')) -Message 'Template-frame default should stay scoped to experiment reports.'
   } finally {
     $env:EXPERIMENT_REPORT_TEMPLATE_PATH = $oldExperimentReportTemplatePath
@@ -2139,7 +2139,12 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   Assert-True -Condition ([int]$autoExcellentStyleResult.appliedSettings.BodyLineTwips -eq 312) -Message 'Auto excellent style result did not apply excellent body spacing.'
   Assert-True -Condition ([int]$autoExcellentStyleResult.appliedSettings.TitleFontHalfPoints -eq 44) -Message 'Auto excellent style result did not apply the expected report-title size.'
   Assert-True -Condition ([int]$autoExcellentStyleResult.appliedSettings.BodyFontHalfPoints -eq 24) -Message 'Auto excellent style result did not apply 12pt body font size.'
-  Assert-True -Condition ($autoExcellentStyleResult.styledInstitutionCount -ge 1) -Message 'Auto excellent style result did not insert or style the institution heading.'
+  Assert-True -Condition ([int]$autoExcellentStyleResult.styledInstitutionCount -eq 0) -Message 'Auto excellent style must not invent an institution heading.'
+  $autoExcellentStyledDocxTemp = Join-Path $tempRoot 'auto-excellent-styled-docx-inspect'
+  [System.IO.Compression.ZipFile]::ExtractToDirectory($autoExcellentStyledDocx, $autoExcellentStyledDocxTemp)
+  [xml]$autoExcellentStyledDocumentXml = [System.IO.File]::ReadAllText((Join-Path $autoExcellentStyledDocxTemp 'word\document.xml'), (New-Object System.Text.UTF8Encoding($false)))
+  Assert-True -Condition ($autoExcellentStyledDocumentXml.OuterXml -notmatch '云南师范大学|信息学院') -Message 'Auto excellent style leaked a school or college name.'
+  Remove-Item -LiteralPath $autoExcellentStyledDocxTemp -Recurse -Force
 
   $paragraphCoverDocx = Join-Path $tempRoot 'paragraph-cover-template.docx'
   New-ParagraphCoverTemplateDocx -Path $paragraphCoverDocx

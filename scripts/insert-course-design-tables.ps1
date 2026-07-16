@@ -293,6 +293,52 @@ function New-TableBlockXml {
 function Get-CourseDesignTableProfile {
   param([Parameter(Mandatory = $true)][string]$DocumentText)
 
+  if ($DocumentText -match "学生成绩管理|成绩录入|成绩统计|总评成绩|operation_log") {
+    return [pscustomobject]@{
+      modules = @(
+        @("基础数据模块", "学生信息管理", "维护学号、姓名、班级、专业和在读状态"),
+        @("基础数据模块", "课程信息管理", "维护课程编号、课程名称、学分和考核比例"),
+        @("核心业务模块", "成绩管理", "录入平时与期末成绩，自动计算总评并防止重复记录"),
+        @("查询统计模块", "成绩查询统计", "按学生、课程和分数段查询，计算平均分与及格率"),
+        @("系统维护模块", "用户与日志管理", "完成身份验证、数据备份和关键操作审计")
+      )
+      database = @(
+        @("1", "student", "存储学生基本信息"),
+        @("2", "course", "存储课程和考核比例"),
+        @("3", "score", "存储学生课程成绩及总评"),
+        @("4", "user", "存储系统用户与角色"),
+        @("5", "operation_log", "记录新增、修改和删除等关键操作")
+      )
+      fieldTables = @(
+        [pscustomobject]@{ name = "student 学生信息表"; rows = @(
+          @("1","student_id","varchar(20) not null","学生学号","主键"),
+          @("2","student_name","varchar(50) not null","学生姓名",""),
+          @("3","class_name","varchar(50) not null","行政班级",""),
+          @("4","major_name","varchar(80)","专业名称",""),
+          @("5","enrollment_year","integer","入学年份",""),
+          @("6","status","varchar(16) not null","在读状态","")
+        ) },
+        [pscustomobject]@{ name = "course 课程信息表"; rows = @(
+          @("1","course_id","varchar(20) not null","课程编号","主键"),
+          @("2","course_name","varchar(80) not null","课程名称",""),
+          @("3","credit","decimal(3,1) not null","课程学分",""),
+          @("4","usual_ratio","decimal(4,2) not null","平时成绩比例",""),
+          @("5","final_ratio","decimal(4,2) not null","期末成绩比例","")
+        ) },
+        [pscustomobject]@{ name = "score 成绩信息表"; rows = @(
+          @("1","score_id","integer not null","成绩记录编号","主键"),
+          @("2","student_id","varchar(20) not null","学生学号","外键"),
+          @("3","course_id","varchar(20) not null","课程编号","外键"),
+          @("4","usual_score","decimal(5,2) not null","平时成绩","0 至 100"),
+          @("5","final_score","decimal(5,2) not null","期末成绩","0 至 100"),
+          @("6","total_score","decimal(5,2) not null","总评成绩","自动计算"),
+          @("7","updated_at","datetime not null","最后更新时间",""),
+          @("8","operator_id","varchar(20)","操作用户编号","外键")
+        ) }
+      )
+    }
+  }
+
   if ($DocumentText -match "选课|退课|成绩提交|课程管理|授课课程") {
     return [pscustomobject]@{
       modules = @(
@@ -531,7 +577,7 @@ try {
         continue
       }
       $text = Get-NodeText -Node $children[$i] -NamespaceManager $namespaceManager
-      if ($text -match "^(实现结果|五[\.．、]\s*实现结果|五、|问题与改进|六[\.．、]\s*问题)") {
+      if ($text -match "^(?:[一二三四五六七八九十]+[\.．、]\s*)?(?:实现结果|运行结果|测试结果|结果展示|系统测试|问题与改进|问题分析与改进|不足与改进|设计总结|课程设计总结|参考文献|参考资料)\s*$") {
         $insertBefore = $children[$i]
         break
       }

@@ -23,3 +23,7 @@ jobs:
       - name: Run PowerShell smoke tests
         shell: powershell
         run: powershell -ExecutionPolicy Bypass -File .\scripts\run-smoke-tests.ps1
+
+      - name: Validate five neutral built-in templates
+        shell: powershell
+        run: powershell -ExecutionPolicy Bypass -File .\tests\run-neutral-template-catalog.ps1

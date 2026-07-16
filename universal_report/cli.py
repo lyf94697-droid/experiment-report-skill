@@ -13,6 +13,11 @@ from .template_contract import (
     analyze_template_cached,
     recommend_quality_mode,
 )
+from .template_catalog import (
+    audit_builtin_templates,
+    load_template_catalog,
+    resolve_template_selection,
+)
 from .visual_validation import inspect_pdf
 
 
@@ -60,6 +65,23 @@ def build_parser() -> argparse.ArgumentParser:
     visual.add_argument("--require-closed-frame", action="store_true")
     visual.add_argument("--dpi", type=int, default=144)
     visual.add_argument("--output")
+
+    catalog = subparsers.add_parser("list-templates")
+    catalog.add_argument("--repo-root", default=".")
+    catalog.add_argument("--output")
+
+    select = subparsers.add_parser("select-template")
+    select.add_argument("--repo-root", default=".")
+    select.add_argument("--report-type", default="experiment-report")
+    select.add_argument("--course", default="")
+    select.add_argument("--preference", default="auto")
+    select.add_argument("--request", default="")
+    select.add_argument("--user-template")
+    select.add_argument("--output")
+
+    audit = subparsers.add_parser("audit-template-catalog")
+    audit.add_argument("--repo-root", default=".")
+    audit.add_argument("--output")
     return parser
 
 
@@ -111,6 +133,35 @@ def main(argv: list[str] | None = None) -> int:
             args.output,
         )
         return 0
+    if args.command == "list-templates":
+        catalog = load_template_catalog(args.repo_root)
+        _write(
+            {
+                "schemaVersion": catalog["schemaVersion"],
+                "catalogPath": catalog["catalogPath"],
+                "templateQuestion": catalog["templateQuestion"],
+                "templates": catalog["templates"],
+            },
+            args.output,
+        )
+        return 0
+    if args.command == "select-template":
+        _write(
+            resolve_template_selection(
+                repo_root=args.repo_root,
+                report_type=args.report_type,
+                user_template=args.user_template,
+                course_name=args.course,
+                preference=args.preference,
+                request_text=args.request,
+            ),
+            args.output,
+        )
+        return 0
+    if args.command == "audit-template-catalog":
+        payload = audit_builtin_templates(args.repo_root)
+        _write(payload, args.output)
+        return 0 if payload["passed"] else 1
     return 2
 
 

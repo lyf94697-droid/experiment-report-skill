@@ -66,6 +66,46 @@ class TemplateContractTests(unittest.TestCase):
             self.assertEqual(contract["structure"]["metadataTable"]["columnCount"], 5)
             self.assertEqual(len(contract["structure"]["imagePlaceholders"]), 1)
 
+    def test_contract_uses_blank_paragraph_after_heading_as_body_style(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            template = make_template(
+                Path(temp_dir) / "blank-body.docx",
+                body_font="仿宋",
+                body_size=23,
+                body_line=320,
+                first_line=460,
+                empty_body=True,
+            )
+
+            contract = analyze_template(template)
+            body = contract["styles"]["roles"]["body"]
+
+            self.assertEqual(body["source"]["sampleText"], "")
+            self.assertEqual(body["font"]["eastAsia"], "仿宋")
+            self.assertEqual(body["sizeHalfPoints"], 23)
+            self.assertEqual(body["lineSpacing"]["line"], 320)
+            self.assertEqual(body["indent"]["firstLine"], 460)
+
+    def test_contract_ignores_body_tables_when_sampling_body_style(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            template = make_template(
+                Path(temp_dir) / "body-table.docx",
+                body_font="宋体",
+                body_size=24,
+                body_line=340,
+                first_line=480,
+                body_table_after=True,
+            )
+
+            contract = analyze_template(template)
+            body = contract["styles"]["roles"]["body"]
+
+            self.assertIn("掌握实验环境配置", body["source"]["sampleText"])
+            self.assertEqual(body["font"]["eastAsia"], "宋体")
+            self.assertEqual(body["sizeHalfPoints"], 24)
+            self.assertEqual(body["lineSpacing"]["line"], 340)
+            self.assertEqual(body["indent"]["firstLine"], 480)
+
     def test_cache_reuses_hash_and_invalidates_after_template_change(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -230,8 +270,9 @@ class PipelineAndContentTests(unittest.TestCase):
         self.assertEqual(config["outputRoot"], str(Path("D:/portable/reports")))
         self.assertEqual(
             config["defaultTemplate"],
-            str(Path("D:/repo/examples/report-templates/experiment-report-template.docx")),
+            str(Path("D:/repo/examples/report-templates/neutral-classic-lab.docx")),
         )
+        self.assertEqual(config["defaultBuiltInTemplateId"], "neutral-classic-lab")
 
 
 if __name__ == "__main__":

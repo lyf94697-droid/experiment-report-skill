@@ -2,6 +2,9 @@
 
 ## 1. Template-first mapping
 
+- 如果用户要生成 DOCX，但尚未说明是否有模板，先问一次：“你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？”
+- 用户提供模板时，它拥有最高优先级，不与内置模板混搭。
+- 用户明确没有模板时，从 `examples/report-templates/catalog.json` 的五套中性模板中选择，不再反复追问。
 - 先识别模板里的固定标题、编号、表格字段、封面字段。
 - 输出时按模板顺序组织，不要擅自改编号。
 - 如果模板标题和常规模板不同，优先服从模板。
@@ -40,16 +43,31 @@
 - Fill missing explanatory sections from the article, but keep the result section aligned with the user's actual outputs.
 - If the article includes code and the user has not provided their own code, mark it as reference implementation instead of pretending it is the user's exact work.
 
-## 6. Template frame standard
+## 6. Five neutral built-in templates
 
-- When an experiment report needs to keep the original school-template outer frame, preserve normal table lines in the top metadata area.
-- Put the main body into one full-width framed body area so the body keeps only the outer border.
-- Do not create horizontal separator lines between body paragraphs or sections.
-- Use this as the default for the current template-frame workflow unless the user explicitly asks for dense table lines.
+- `neutral-classic-lab`：经典四列信息表，适合普通课程实验。
+- `neutral-bordered-lab`：闭合页面外框，适合强调传统纸质版式的报告。
+- `neutral-engineering-lab`：技术层级、代码和图注样式更明确，适合计算机与工程类实验。
+- `neutral-course-design`：独立封面和正文分节，适合课程设计、综合实验和项目报告。
+- `neutral-modern-minimal`：两列元数据和轻量层级，适合现代简洁风格。
 
-## 7. Teacher excellent-example standard
+自动选择顺序：
 
-- For the current experiment-report workflow, treat the teacher优秀示例 as the default visual target.
-- The first page should start with the institution line `云南师范大学信息学院`, then the compact title `实验报告`, then the metadata table, then the body content. Do not insert a separate cover page unless the source template requires it.
-- Use a formal Chinese report type scale: body 12pt 宋体, section headings about 15pt 宋体加粗, report title about 22pt 宋体, institution heading about 18pt 宋体.
-- Keep body text dense enough to resemble a real submitted report instead of a short outline. Prefer numbered headings such as `1 实验目的`, `2 实验内容`, `3 实验原理`.
+1. 课程设计或综合项目 → `neutral-course-design`
+2. 明确要求闭合外框 → `neutral-bordered-lab`
+3. 明确要求现代或极简 → `neutral-modern-minimal`
+4. 计算机、编程或工程课程 → `neutral-engineering-lab`
+5. 其他实验 → `neutral-classic-lab`
+
+## 7. Neutrality and provenance gate
+
+- 内置模板不得出现真实学校、学院、专业组织名称、校徽、校训、水印、地址、二维码、示例学生姓名或长数字学号。
+- 内置模板不得携带第三方图片、字体文件或复制的示例正文。
+- 公共模板只用于参考信息表比例、章节层级、分节和排版节奏。
+- 每次修改或重建内置模板后运行：
+
+```powershell
+python -m universal_report audit-template-catalog --repo-root .
+```
+
+- 审计不通过时，不得把对应模板作为自动回退模板。

@@ -12,7 +12,7 @@ from xml.etree import ElementTree as ET
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 R_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 NS = {"w": W_NS, "r": R_NS}
-ANALYZER_VERSION = "1.3"
+ANALYZER_VERSION = "1.6"
 
 
 def _q(name: str) -> str:
@@ -208,12 +208,16 @@ class _StyleResolver:
 def _paragraph_role_samples(
     document_xml: ET.Element, resolver: _StyleResolver
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    table_paragraphs = set(document_xml.findall(".//w:tbl//w:p", NS))
+    paragraph_table_indexes: dict[ET.Element, int] = {}
+    for table_index, table in enumerate(document_xml.findall(".//w:tbl", NS), start=1):
+        for paragraph in table.findall(".//w:p", NS):
+            paragraph_table_indexes[paragraph] = table_index
     paragraphs = []
     for index, paragraph in enumerate(document_xml.findall(".//w:p", NS), start=1):
         sample = resolver.paragraph(paragraph)
         sample["index"] = index
-        sample["inTable"] = paragraph in table_paragraphs
+        sample["tableIndex"] = paragraph_table_indexes.get(paragraph)
+        sample["inTable"] = sample["tableIndex"] is not None
         paragraphs.append(sample)
 
     nonempty = [item for item in paragraphs if item["text"]]
@@ -287,8 +291,17 @@ def _paragraph_role_samples(
     heading1 = heading_candidates[0] if heading_candidates else report_title
     heading2 = heading_candidates[1] if len(heading_candidates) > 1 else heading1
     heading3 = heading_candidates[2] if len(heading_candidates) > 2 else heading2
+    first_heading_index = min(
+        (item["index"] for item in heading_candidates),
+        default=len(paragraphs) + 1,
+    )
+    first_table_paragraph_indexes = [
+        item["index"]
+        for item in paragraphs
+        if item.get("tableIndex") == 1 and item["index"] < first_heading_index
+    ]
     last_table_paragraph_index = max(
-        (item["index"] for item in paragraphs if item["inTable"]),
+        first_table_paragraph_indexes,
         default=report_title["index"],
     )
 
@@ -314,18 +327,30 @@ def _paragraph_role_samples(
             None,
         )
 
+    heading_indexes = {item["index"] for item in heading_candidates}
+    blank_body = next(
+        (
+            item
+            for item in paragraphs
+            if not item["text"]
+            and not item["inTable"]
+            and item["index"] - 1 in heading_indexes
+        ),
+        None,
+    )
     body = (
         body_candidate(
             after_index=last_table_paragraph_index, in_table=False, meaningful=True
+        )
+        or blank_body
+        or body_candidate(
+            after_index=last_table_paragraph_index, in_table=False, meaningful=False
         )
         or body_candidate(
             after_index=report_title["index"], in_table=False, meaningful=True
         )
         or body_candidate(
             after_index=report_title["index"], in_table=True, meaningful=True
-        )
-        or body_candidate(
-            after_index=last_table_paragraph_index, in_table=False, meaningful=False
         )
         or body_candidate(
             after_index=report_title["index"], in_table=False, meaningful=False

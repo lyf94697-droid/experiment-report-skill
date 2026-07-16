@@ -2,6 +2,8 @@
 param(
   [string]$TemplatePath,
 
+  [string]$BuiltInTemplateId,
+
   [string]$ReportPath,
 
   [string[]]$ReferenceUrls,
@@ -235,7 +237,9 @@ $resolvedTemplatePath = Resolve-ExperimentReportTemplatePath `
   -TemplatePath $TemplatePath `
   -ReportProfileName ([string]$reportProfile.name) `
   -ReportProfilePath ([string]$reportProfile.resolvedProfilePath) `
-  -RepoRoot $repoRoot
+  -RepoRoot $repoRoot `
+  -BuiltInTemplateId $BuiltInTemplateId
+$resolvedBuiltInTemplateId = Get-BuiltInTemplateIdForPath -RepoRoot $repoRoot -TemplatePath $resolvedTemplatePath
 $templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
 $templateFrameDefaulted = ($templatePathDefaulted -and (-not [bool]$CreateTemplateFrameDocx) -and [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath) -and (Test-ExperimentReportTemplateFrameDefault -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath)))
 $shouldCreateTemplateFrameDocx = ([bool]$CreateTemplateFrameDocx) -or (-not [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath)) -or $templateFrameDefaulted
@@ -687,6 +691,8 @@ $wrapperSummary = [pscustomobject]@{
   artifactsDir = $resolvedArtifactsDir
   templatePath = $resolvedTemplatePath
   templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
+  templateSelectionSource = $(if (-not [string]::IsNullOrWhiteSpace($TemplatePath)) { "user" } else { "builtin" })
+  builtInTemplateId = $resolvedBuiltInTemplateId
   templateFrameDefaulted = $templateFrameDefaulted
   fixedExperimentReportStyle = (Test-IsExperimentReportProfile -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath))
   mode = $wrapperMode

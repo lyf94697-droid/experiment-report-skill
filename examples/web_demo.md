@@ -32,10 +32,13 @@ http://127.0.0.1:7860
 - 课程、题目、学生信息和实验要求
 - 对话式需求、教程链接和补充说明
 - 可选 DOCX / DOC 模板
+- 无上传模板时的五套中性模板选择
 - 多张截图和多个代码文件
 - 可信本机环境下的本地目录或文件路径
 
 手工填写字段的优先级高于对话式文本自动提取。
+
+页面会先提示是否有老师、学校或自己认可的优秀模板。上传模板始终优先；没有模板时可以自动推荐，也可以手工选择经典、闭合外框、工程技术、课程设计或现代简洁模板。
 
 ## 模板保真
 
@@ -88,6 +91,7 @@ COM 兜底有超时保护，只清理本次自动化新启动的 Office 进程�
 ```powershell
 $env:EXPERIMENT_REPORT_TEMPLATE_PATH = "D:\templates\experiment.docx"
 $env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH = "D:\templates\course-design.docx"
+$env:EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID = "neutral-engineering-lab"
 $env:EXPERIMENT_REPORT_OUTPUT_ROOT = "D:\report-output"
 $env:EXPERIMENT_REPORT_CACHE_ROOT = "D:\report-cache"
 ```

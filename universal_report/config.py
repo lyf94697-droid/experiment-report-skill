@@ -24,10 +24,15 @@ def load_config(repo_root: Path, config_path: Path | None = None) -> dict[str, A
     if candidate and candidate.exists():
         file_config = json.loads(candidate.read_text(encoding="utf-8-sig"))
 
+    default_builtin_template_id = _first_value(
+        os.environ.get("EXPERIMENT_REPORT_BUILTIN_TEMPLATE_ID"),
+        str(file_config.get("defaultBuiltInTemplateId") or ""),
+        "neutral-classic-lab",
+    )
     default_template = _first_value(
         os.environ.get("EXPERIMENT_REPORT_TEMPLATE_PATH"),
         str(file_config.get("defaultTemplate") or ""),
-        str(repo_root / "examples" / "report-templates" / "experiment-report-template.docx"),
+        str(repo_root / "examples" / "report-templates" / f"{default_builtin_template_id}.docx"),
     )
     output_root = _first_value(
         os.environ.get("EXPERIMENT_REPORT_OUTPUT_ROOT"),
@@ -43,6 +48,10 @@ def load_config(repo_root: Path, config_path: Path | None = None) -> dict[str, A
     return {
         "schemaVersion": "1.0",
         "defaultTemplate": default_template,
+        "defaultBuiltInTemplateId": default_builtin_template_id,
+        "templateCatalog": str(
+            repo_root / "examples" / "report-templates" / "catalog.json"
+        ),
         "outputRoot": output_root,
         "cacheRoot": cache_root,
         "pdf": {

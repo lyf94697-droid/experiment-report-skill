@@ -1489,7 +1489,12 @@ for ($blockIndex = 0; $blockIndex -lt $blocks.Count; $blockIndex++) {
       continue
     }
 
-    $paragraphCompositeFill = Get-CompositeParagraphFillSpec -ParagraphText $paragraphText -SectionsById $reportAnalysis.SectionsById -ExtraSectionsByHeading $reportAnalysis.ExtraSectionsByHeading
+    $sectionRule = Resolve-SectionRule -HeadingText $paragraphText
+    $paragraphCompositeFill = if ($null -eq $sectionRule) {
+      Get-CompositeParagraphFillSpec -ParagraphText $paragraphText -SectionsById $reportAnalysis.SectionsById -ExtraSectionsByHeading $reportAnalysis.ExtraSectionsByHeading
+    } else {
+      $null
+    }
     if ($null -ne $paragraphCompositeFill) {
       $nextBlock = if (($blockIndex + 1) -lt $blocks.Count) { $blocks[$blockIndex + 1] } else { $null }
       $nextBlockIsFillTarget = ($null -ne $nextBlock) -and $nextBlock.type -eq "paragraph" -and (Is-ExplicitFillTargetInstructionLike -Text ([string]$nextBlock.text))
@@ -1513,7 +1518,6 @@ for ($blockIndex = 0; $blockIndex -lt $blocks.Count; $blockIndex++) {
       continue
     }
 
-    $sectionRule = Resolve-SectionRule -HeadingText $paragraphText
     if ($null -ne $sectionRule) {
       if ($reportAnalysis.SectionsById.ContainsKey($sectionRule.id)) {
         $sectionInfo = $reportAnalysis.SectionsById[$sectionRule.id]

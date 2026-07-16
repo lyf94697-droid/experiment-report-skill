@@ -20,7 +20,6 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Path $resolvedOutputDir -Force | Out-Null
 
-$templatePath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "report-templates", "experiment-report-template.docx"))).Path
 $reportPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "report.txt"))).Path
 $metadataPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "metadata.json"))).Path
 $requirementsPath = (Resolve-Path ([System.IO.Path]::Combine($repoRoot, "examples", "demo-one-click", "requirements.json"))).Path
@@ -39,16 +38,21 @@ for ($index = 0; $index -lt @($imageSpecs.images).Count; $index++) {
 
 $imageSpecsJson = $imageSpecs | ConvertTo-Json -Depth 8
 
-& ([System.IO.Path]::Combine($repoRoot, "scripts", "build-report.ps1")) `
-  -TemplatePath $templatePath `
-  -ReportPath $reportPath `
-  -MetadataPath $metadataPath `
-  -RequirementsPath $requirementsPath `
-  -ImageSpecsJson $imageSpecsJson `
-  -OutputDir $resolvedOutputDir `
-  -StyleFinalDocx `
-  -PipelineMode $PipelineMode `
-  -StyleProfile $StyleProfile | Out-Null
+$buildParameters = @{
+  BuiltInTemplateId = "neutral-classic-lab"
+  ReportPath = $reportPath
+  MetadataPath = $metadataPath
+  RequirementsPath = $requirementsPath
+  ImageSpecsJson = $imageSpecsJson
+  OutputDir = $resolvedOutputDir
+  PipelineMode = $PipelineMode
+}
+if ($PSBoundParameters.ContainsKey("StyleProfile")) {
+  $buildParameters.StyleFinalDocx = $true
+  $buildParameters.StyleProfile = $StyleProfile
+}
+
+& ([System.IO.Path]::Combine($repoRoot, "scripts", "build-report.ps1")) @buildParameters | Out-Null
 
 $summaryPath = Join-Path $resolvedOutputDir "summary.json"
 $summary = (Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8) | ConvertFrom-Json

@@ -8,6 +8,9 @@ The format is based on Keep a Changelog, and this project currently tracks chang
 
 ### Added
 
+- Added five original, school-neutral DOCX templates for classic, bordered, engineering, course-design, and modern-minimal report styles, together with a machine-readable catalog and reproducible builder.
+- Added template selection and catalog-audit commands. User-supplied templates always win; built-ins are checked for institution names, example identities, embedded media, provenance, and license metadata.
+- Added a persistent five-template integration test that builds every neutral template through the main report pipeline.
 - Added the `universal_report` core package for cross-machine configuration, structured pipeline traces, content planning, template contracts, image manifests, format validation, and strict visual validation.
 - Added `TemplateStyleContract` analysis with effective style inheritance, template-hash/version caching, page and section settings, role-based typography, table geometry, headers, footers, placeholders, and structural risks.
 - Added ten generated compatibility fixtures, Python unit tests, core smoke tests, five universal end-to-end scenarios, and real-template regression coverage.
@@ -27,6 +30,8 @@ The format is based on Keep a Changelog, and this project currently tracks chang
 
 ### Changed
 
+- The CLI, PowerShell wrappers, Web UI, documentation, and skill instructions now ask about a preferred template once and otherwise select from exactly five neutral built-in templates.
+- The former `experiment-report-template.docx` and `course-design-report-template.docx` files are now compatibility aliases for the classic laboratory and course-design templates.
 - User-supplied templates now default to fidelity-preserving mode; repository style normalization and course-design enhancements run only when explicitly requested or when using a repository default template.
 - The main wrappers and Web UI now expose structured progress, generation status, template/format/image/visual artifacts, exact image-count requests, and actionable quality recommendations.
 - Image handling now validates paths, deduplicates by content hash, records selection reasons, defaults to one image per line, and keeps image paragraphs with their captions where practical.

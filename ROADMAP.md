@@ -35,6 +35,8 @@ Status: substantially implemented by the universal report refactor.
 
 Before adding more document types, the current experiment-report flow should become easier to trust, debug, and reuse.
 
+Completed foundations include user-template-first fidelity, five reproducible school-neutral fallback templates, catalog-based automatic selection, provenance/identity auditing, and a five-template pipeline regression.
+
 Priority work:
 
 - integrate image-placement planning into the main wrappers instead of exposing it only as a lower-level script option

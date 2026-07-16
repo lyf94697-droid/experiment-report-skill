@@ -15,7 +15,7 @@
 
 ## 搭配使用的其他仓库素材
 
-- 模板：[`../report-templates/experiment-report-template.docx`](../report-templates/experiment-report-template.docx)
+- 模板：[`../report-templates/neutral-classic-lab.docx`](../report-templates/neutral-classic-lab.docx)
 - 截图：[`../../demo/assets/`](../../demo/assets/)
 
 ## 最小可运行命令
@@ -30,10 +30,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-one-click-demo.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
-  -TemplatePath ".\examples\report-templates\experiment-report-template.docx" `
+  -BuiltInTemplateId neutral-classic-lab `
   -ReportPath ".\examples\demo-one-click\report.txt" `
   -MetadataPath ".\examples\demo-one-click\metadata.json" `
-  -RequirementsPath ".\examples\demo-one-click\requirements.json" `
-  -StyleFinalDocx `
-  -StyleProfile auto
+  -RequirementsPath ".\examples\demo-one-click\requirements.json"
 ```

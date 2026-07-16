@@ -1,0 +1,34 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\cases\\os-process-scheduling\\assets\\scheduling-flow.png",
+      "section": "实验原理或任务要求",
+      "caption": "图1 进程调度模拟程序流程",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\os-process-scheduling\\assets\\scheduling-gantt.png",
+      "section": "实验结果",
+      "caption": "图2 FCFS、SJF 与 RR 调度甘特图",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\os-process-scheduling\\assets\\scheduling-metrics.png",
+      "section": "实验结果",
+      "caption": "图3 三种算法平均性能指标对比",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\os-process-scheduling\\assets\\scheduling-console.png",
+      "section": "实验结果",
+      "caption": "图4 调度程序运行与断言结果",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\os-process-scheduling\\assets\\scheduling-tests.png",
+      "section": "问题分析",
+      "caption": "图5 边界条件与回归测试记录",
+      "widthCm": 15.5
+    }
+  ]
+}

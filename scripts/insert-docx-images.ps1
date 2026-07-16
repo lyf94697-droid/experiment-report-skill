@@ -1023,7 +1023,8 @@ function Get-SingleXmlNode {
   )
 
   if ($NodeLike -is [System.Xml.XmlNode]) {
-    return $NodeLike
+    Write-Output -NoEnumerate $NodeLike
+    return
   }
 
   $candidates = @($NodeLike | Where-Object { $_ -is [System.Xml.XmlNode] })
@@ -1031,7 +1032,7 @@ function Get-SingleXmlNode {
     throw "Expected an XmlNode-compatible value."
   }
 
-  return $candidates[0]
+  Write-Output -NoEnumerate $candidates[0]
 }
 
 function New-ImageParagraph {
@@ -1422,7 +1423,8 @@ function Get-SectionEndInsertionNode {
   )
 
   if ($TargetNode.LocalName -ne "p" -or $TargetNode.ParentNode.LocalName -ne "body") {
-    return $TargetNode
+    Write-Output -NoEnumerate $TargetNode
+    return
   }
 
   $insertionNode = $TargetNode
@@ -1443,7 +1445,7 @@ function Get-SectionEndInsertionNode {
     $cursor = $cursor.NextSibling
   }
 
-  return $insertionNode
+  Write-Output -NoEnumerate $insertionNode
 }
 
 function Get-EffectiveInsertionNode {
@@ -1457,10 +1459,12 @@ function Get-EffectiveInsertionNode {
 
   $targetNode = Get-SingleXmlNode -NodeLike $ResolvedTarget.Node
   if ([string]$ResolvedTarget.ResolutionKey -like "section:*") {
-    return Get-SectionEndInsertionNode -TargetNode $targetNode -NamespaceManager $NamespaceManager
+    $sectionEndNode = Get-SectionEndInsertionNode -TargetNode $targetNode -NamespaceManager $NamespaceManager
+    Write-Output -NoEnumerate $sectionEndNode
+    return
   }
 
-  return $targetNode
+  Write-Output -NoEnumerate $targetNode
 }
 
 function Get-EffectiveRowLayoutTarget {
@@ -1759,8 +1763,11 @@ try {
 
         $layoutTable = Get-SingleXmlNode -NodeLike (New-ImageTable -DocumentXml $documentXml -CellEntries ($cellEntries.ToArray()) -Columns $groupColumns)
         $anchorNode = Get-EffectiveInsertionNode -ResolvedTarget $groupTarget -NamespaceManager $namespaceManager
-        if ($anchorNode.LocalName -eq "p") {
-          $insertAfter = if ($tailLookup.ContainsKey($targetKey)) { Get-SingleXmlNode -NodeLike $tailLookup[$targetKey] } else { $anchorNode }
+        if ($anchorNode.LocalName -eq "p" -or $anchorNode.ParentNode.LocalName -eq "body") {
+          [System.Xml.XmlNode]$insertAfter = $anchorNode
+          if ($tailLookup.ContainsKey($targetKey)) {
+            $insertAfter = [System.Xml.XmlNode]$tailLookup[$targetKey]
+          }
           $parentNode = $insertAfter.ParentNode
           $parentNode.InsertAfter($layoutTable, $insertAfter) | Out-Null
           $tailLookup[$targetKey] = $layoutTable
@@ -1780,9 +1787,12 @@ try {
     $preparedImage = New-PreparedImageBlock -DocumentXml $documentXml -RelationshipsXml $relationshipsXml -ContentTypesXml $contentTypesXml -MediaDirectory $mediaDirectory -ImageSpec $imageSpec -NextMediaIndex ([ref]$nextMediaIndex) -NextRelationshipId ([ref]$nextRelationshipId) -NextDocPrId ([ref]$nextDocPrId)
 
     $anchorNode = Get-EffectiveInsertionNode -ResolvedTarget $resolvedTarget -NamespaceManager $namespaceManager
-    if ($anchorNode.LocalName -eq "p") {
+    if ($anchorNode.LocalName -eq "p" -or $anchorNode.ParentNode.LocalName -eq "body") {
       $tailKey = $resolvedTarget.ResolutionKey
-      $insertAfter = if ($tailLookup.ContainsKey($tailKey)) { Get-SingleXmlNode -NodeLike $tailLookup[$tailKey] } else { $anchorNode }
+      [System.Xml.XmlNode]$insertAfter = $anchorNode
+      if ($tailLookup.ContainsKey($tailKey)) {
+        $insertAfter = [System.Xml.XmlNode]$tailLookup[$tailKey]
+      }
       $parentNode = $insertAfter.ParentNode
       $parentNode.InsertAfter($preparedImage.ImageParagraph, $insertAfter) | Out-Null
       $insertAfter = $preparedImage.ImageParagraph

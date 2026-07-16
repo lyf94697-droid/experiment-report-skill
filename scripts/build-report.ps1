@@ -2,6 +2,8 @@
 param(
   [string]$TemplatePath,
 
+  [string]$BuiltInTemplateId,
+
   [Parameter(Mandatory = $true)]
   [string]$ReportPath,
 
@@ -493,7 +495,10 @@ function Test-IsFlowchartSignal {
     [string]$Text
   )
 
-  return (-not [string]::IsNullOrWhiteSpace($Text) -and $Text -match '(?i)(流程图|flowchart|flow-chart)')
+  return (
+    -not [string]::IsNullOrWhiteSpace($Text) -and
+    $Text -match '(?i)(流程图|总体架构|系统架构|体系结构图|flowchart|flow-chart|system architecture|architecture diagram)'
+  )
 }
 
 function Test-ImageItemsContainFlowchart {
@@ -767,8 +772,11 @@ $resolvedTemplatePath = Resolve-ExperimentReportTemplatePath `
   -TemplatePath $TemplatePath `
   -ReportProfileName ([string]$reportProfile.name) `
   -ReportProfilePath $resolvedReportProfilePath `
-  -RepoRoot $repoRoot
+  -RepoRoot $repoRoot `
+  -BuiltInTemplateId $BuiltInTemplateId
 $sourceTemplatePath = $resolvedTemplatePath
+$resolvedBuiltInTemplateId = Get-BuiltInTemplateIdForPath -RepoRoot $repoRoot -TemplatePath $resolvedTemplatePath
+$templateSelectionSource = if (-not [string]::IsNullOrWhiteSpace($TemplatePath)) { "user" } else { "builtin" }
 $templateConversion = $null
 $resolvedReportPath = (Resolve-Path -LiteralPath $ReportPath).Path
 
@@ -866,6 +874,8 @@ $materialSummary = [pscustomobject]@{
   template = [pscustomobject]@{
     sourcePath = $sourceTemplatePath
     defaulted = $templatePathDefaulted
+    selectionSource = $templateSelectionSource
+    builtInTemplateId = $resolvedBuiltInTemplateId
   }
   images = [pscustomobject]@{
     mode = $imageInputMode
@@ -1475,6 +1485,8 @@ $summary = [pscustomobject]@{
   templatePath = $resolvedTemplatePath
   sourceTemplatePath = $sourceTemplatePath
   templatePathDefaulted = $templatePathDefaulted
+  templateSelectionSource = $templateSelectionSource
+  builtInTemplateId = $resolvedBuiltInTemplateId
   templateContractPath = $templateContractPath
   templateCacheDir = $resolvedTemplateCacheDir
   templateCacheHit = $(if ($templateContract.PSObject.Properties.Name -contains "cache") { [bool]$templateContract.cache.hit } else { $false })

@@ -13,6 +13,9 @@ class WebUiContractTests(unittest.TestCase):
         source = (REPO_ROOT / "web_ui.py").read_text(encoding="utf-8")
 
         self.assertIn("load_config(REPO_ROOT)", source)
+        self.assertIn("load_template_catalog(REPO_ROOT)", source)
+        self.assertIn("built_in_template_choice", source)
+        self.assertIn("用户上传模板始终优先", source)
         self.assertIn('"TemplateStyleMode": "preserve"', source)
         self.assertIn('"-TemplateStyleMode"', source)
         self.assertNotIn(r"E:\实验报告", source)

@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1.0",
+  "catalogName": "experiment-report-neutral-templates",
+  "templateQuestion": "你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？有的话请上传，我会优先保持原格式；没有的话，我会从五套不含学校标识的内置模板中选择。",
+  "defaults": {
+    "experiment-report": "neutral-classic-lab",
+    "course-design-report": "neutral-course-design"
+  },
+  "identityPolicy": {
+    "schoolBranding": "forbidden",
+    "exampleStudentIdentity": "forbidden",
+    "embeddedThirdPartyMedia": "forbidden",
+    "forbiddenTerms": [
+      "云南师范大学",
+      "四川大学",
+      "宜宾学院",
+      "华中科技大学",
+      "合肥工业大学",
+      "浙江大学",
+      "广州大学",
+      "长春工业大学",
+      "中国矿业大学"
+    ]
+  },
+  "templates": [
+    {
+      "id": "neutral-classic-lab",
+      "displayName": "经典实验报告",
+      "aliases": ["经典", "通用", "传统实验报告"],
+      "file": "neutral-classic-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "四列信息表、宋体正文和清晰的中文章节层级，适合大多数普通课程实验。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://jwc.yibinu.edu.cn/info/1090/3155.htm",
+          "incorporation": "仅参考稳定的四列信息表和紧凑正文结构，不复制名称、文字或资产。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-bordered-lab",
+      "displayName": "闭合外框实验报告",
+      "aliases": ["外框", "闭合边框", "纸质表格式"],
+      "file": "neutral-bordered-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "页面四边闭合外框、传统信息表和较充足的手工记录空间，适合强调纸质提交格式的实验。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://see.cidp.edu.cn/info/1068/1715.htm",
+          "incorporation": "仅参考 A4、边框闭合和图表规范等公开结构原则。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-engineering-lab",
+      "displayName": "工程技术实验报告",
+      "aliases": ["工程", "计算机", "技术实验"],
+      "file": "neutral-engineering-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "蓝灰技术层级、代码与图注样式齐全，适合计算机网络、操作系统、数据库、Java、Web 和 Android 实验。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://github.com/memset0/ZJU-Project-Report-Template",
+          "incorporation": "仅参考 lab/project 的现代层级和技术信息组织方式。"
+        },
+        {
+          "url": "https://github.com/zxc479773533/HUST-CS-Report-Template",
+          "incorporation": "仅参考中文技术报告的字体层级、图注和代码内容角色，不复制文件或品牌。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-course-design",
+      "displayName": "课程设计报告",
+      "aliases": ["课程设计", "综合实验", "项目报告"],
+      "file": "neutral-course-design.docx",
+      "reportTypes": ["course-design-report", "experiment-report"],
+      "description": "独立封面、正文分节和完整项目章节，适合课程设计、综合实验和软件工程项目报告。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://github.com/HFUTTUG/HFUT_Course_Report",
+          "incorporation": "仅参考封面、正文分节和课程设计章节架构，不复制学校版式资产。"
+        },
+        {
+          "url": "https://github.com/swq123459/GZHU-Report-Latex-Version",
+          "incorporation": "仅参考实验、综合实验和课程设计的类型划分。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-modern-minimal",
+      "displayName": "现代简洁实验报告",
+      "aliases": ["现代", "简洁", "极简"],
+      "file": "neutral-modern-minimal.docx",
+      "reportTypes": ["experiment-report", "course-design-report"],
+      "description": "两列元数据、留白充分、低装饰层级，适合不要求传统学校表格的现代报告。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://github.com/roland-KA/basic-report-typst-template",
+          "incorporation": "仅参考中性、可配置和简洁的报告设计原则。"
+        },
+        {
+          "url": "https://github.com/Shincey/ChineseLatexTemplate",
+          "incorporation": "仅参考通用中文报告的字体与章节可配置思想。"
+        }
+      ]
+    }
+  ]
+}

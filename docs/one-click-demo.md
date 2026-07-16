@@ -10,7 +10,7 @@
 2. 填充实验报告模板
 3. 插入 4 张演示截图
 4. 输出图片分配预案
-5. 进行最终样式处理
+5. 保留所选中性模板的原始样式
 6. 生成 `layout-check.json` 和 `summary.json`
 
 ## 前置条件
@@ -36,7 +36,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-one-click-demo.ps1 `
 
 ## 演示输入来自哪里
 
-- 模板：`examples/report-templates/experiment-report-template.docx`
+- 模板：`neutral-classic-lab`（由 `examples/report-templates/catalog.json` 解析）
 - 正文：`examples/demo-one-click/report.txt`
 - metadata：`examples/demo-one-click/metadata.json`
 - requirements：`examples/demo-one-click/requirements.json`
@@ -52,7 +52,7 @@ tests-output/one-click-demo-时间戳/
 
 关键文件包括：
 
-- `*.styled.docx`：最终成品
+- `*.filled.images.docx`：最终成品
 - `generated-field-map.json`：模板字段映射
 - `generated-image-map.json`：正式插图计划
 - `image-placement-plan.md`：可读的插图预案

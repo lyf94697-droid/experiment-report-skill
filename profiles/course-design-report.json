@@ -97,6 +97,7 @@
     "参考文献"
   ],
   "imagePlacementDefaults": {
+    "autoRowLayout": "explicit-only",
     "fallbackSectionOrder": ["steps", "result", "analysis", "environment", "summary", "purpose"],
     "defaultCaptions": {
       "environment": "开发环境截图",

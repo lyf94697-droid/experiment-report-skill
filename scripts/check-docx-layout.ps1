@@ -290,6 +290,7 @@ try {
   $allText = $paragraphTexts -join [Environment]::NewLine
 
   $imageDrawingCount = @($documentXml.SelectNodes("//a:blip[@r:embed or @r:link]", $documentNamespaceManager)).Count
+  $invalidTableParagraphs = @($documentXml.SelectNodes("//w:tbl/w:p | //w:tr/w:p", $documentNamespaceManager))
   $imageRelationshipCount = 0
   if (-not [string]::IsNullOrWhiteSpace($relationshipsText)) {
     [xml]$relationshipsXml = $relationshipsText
@@ -313,6 +314,9 @@ try {
 
   if ($ExpectedImageCount -ge 0 -and $imageDrawingCount -ne $ExpectedImageCount) {
     Add-Finding -Findings $errors -Code "image-count-mismatch" -Message ("Expected {0} image drawing nodes, found {1}." -f $ExpectedImageCount, $imageDrawingCount)
+  }
+  if ($invalidTableParagraphs.Count -gt 0) {
+    Add-Finding -Findings $errors -Code "invalid-table-child-paragraph" -Message ("Found {0} paragraph node(s) directly under a table or table row. Word may silently omit images or captions stored in this invalid structure." -f $invalidTableParagraphs.Count)
   }
 
   if ($ExpectedCaptionCount -lt 0 -and $ExpectedImageCount -ge 0) {
@@ -545,6 +549,7 @@ try {
     actual = [pscustomobject]@{
       imageDrawingCount = $imageDrawingCount
       imageRelationshipCount = $imageRelationshipCount
+      invalidTableChildParagraphCount = $invalidTableParagraphs.Count
       captionCount = @($captionTexts).Count
       captions = $captionTexts
       captionNumbers = $captionNumbers
