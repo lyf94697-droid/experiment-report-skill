@@ -3,19 +3,18 @@
 ```text
 请优先使用本仓库的本地 wrapper 连贯处理实验报告生成、模板填充、截图插入和最终排版，不要默认拆成很长的手工任务列表。
 
-工作目录：
-E:\游戏\openclaw-experiment-report-skill
+工作目录：当前仓库目录
 
 默认输出目录：
-E:\实验报告\新建文件夹
+.\outputs\one-shot
 
 基础信息：
 - 课程名称：计算机网络
-- 模板路径：E:\实验报告\实验报告模版1.docx
+- 模板路径：.\materials\实验报告模板.docx
 - 姓名：示例学生
 - 学号：20260001
 - 班级：计科2401
-- 指导教师：李老师
+- 指导教师：示例教师
 - 实验性质：③验证性实验
 - 实验时间：2026年4月2日
 - 实验地点：睿智楼四栋212
@@ -33,7 +32,8 @@ E:\实验报告\新建文件夹
 - 判断每张图属于 `实验步骤`、`实验结果`、`问题分析` 或其他合适章节；优先依据图片可见内容，其次依据文件名，最后才按上传顺序兜底。
 - 不要因为图片分配置信度低就停下来问我；低置信度时按最佳判断继续，并在最后总结里列出低置信度图片。
 - 尽量为每张图写具体图注，例如“IIS 站点配置结果界面”“客户端浏览器访问网站结果”，不要只写“实验步骤截图”这类泛化图注。
-- 多张同章节图片默认使用每行 2 张布局；图片很多时按章节自然分组，优先形成 2x2 小块，避免把无关章节混到同一组。
+- 默认一图一行、图注在下；只有我明确要求并排或网格时才使用每行 2 张或 2x2 布局。
+- 按内容哈希去重；如果我指定图片数量，必须严格满足，不能重复图片凑数。
 - 章节图片应放在该章节正文末尾、下一章节标题之前，不要紧跟章节标题后硬塞。
 - 最终 docx 必须真正插入图片文件。
 
@@ -47,7 +47,7 @@ E:\实验报告\新建文件夹
      -ImagePaths "第1张真实图片路径","第2张真实图片路径" `
      -Format markdown `
      -PlanOnly `
-     -OutFile "E:\实验报告\新建文件夹\image-placement-plan.md"
+     -OutFile ".\outputs\one-shot\image-placement-plan.md"
 
 4. 继续生成正式 image map，不要中断等待确认：
 
@@ -55,22 +55,22 @@ E:\实验报告\新建文件夹
      -DocxPath "已填正文的 docx 路径" `
      -ImagePaths "第1张真实图片路径","第2张真实图片路径" `
      -Format json `
-     -OutFile "E:\实验报告\新建文件夹\generated-image-map.json"
+     -OutFile ".\outputs\one-shot\generated-image-map.json"
 
 5. 运行 `scripts/insert-docx-images.ps1` 插入图片。
-6. 运行 `scripts/format-docx-report-style.ps1 -Profile auto` 做最终排版。
-7. 运行 `scripts/check-docx-layout.ps1` 检查图片数、图注数、占位符和章节。
+6. 保留用户模板格式；只有我明确要求统一样式时才运行 `scripts/format-docx-report-style.ps1`。
+7. 运行 `scripts/check-docx-layout.ps1` 和 `scripts/validate-docx-format.ps1` 检查图片、图注、占位符、章节和模板契约。
 
 如果直接使用一站式 wrapper，也可以调用：
 
 powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 `
   -ReferenceUrls "https://blog.csdn.net/你的文章链接" `
   -CourseName "计算机网络" `
-  -TemplatePath "E:\实验报告\实验报告模版1.docx" `
+  -TemplatePath ".\materials\实验报告模板.docx" `
   -StudentName "示例学生" `
   -StudentId "20260001" `
   -ClassName "计科2401" `
-  -TeacherName "李老师" `
+  -TeacherName "示例教师" `
   -ExperimentProperty "③验证性实验" `
   -ExperimentDate "2026年4月2日" `
   -ExperimentLocation "睿智楼四栋212" `
@@ -79,8 +79,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
     "第2张真实图片路径", `
     "第3张真实图片路径", `
     "第4张真实图片路径" `
-  -OutputDir "E:\实验报告\新建文件夹" `
-  -StyleProfile auto `
+  -OutputDir ".\outputs\one-shot" `
+  -RequestedImageCount 4 `
+  -TemplateStyleMode preserve `
   -DetailLevel full
 
 如果你能根据上传图片内容可靠判断章节和图注，优先生成 `-ImageSpecsJson` 或 `-ImageSpecsPath` 并传给 wrapper，这比只传 `-ImagePaths` 更稳定。

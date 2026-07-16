@@ -475,6 +475,56 @@ function Should-UseAfterHeadingFill {
   return (Is-SectionHeadingLike -Text $HeadingText)
 }
 
+function Should-InsertBeforeLockedNextParagraph {
+  param(
+    [AllowNull()]
+    [string]$HeadingText,
+
+    [Parameter(Mandatory = $true)]
+    [object]$FillSpec,
+
+    [AllowNull()]
+    [System.Xml.XmlNode]$NextParagraph,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager
+  )
+
+  if ($FillSpec.Mode -in @("inline", "replace")) {
+    return $false
+  }
+  if ($null -eq $NextParagraph -or -not (Is-SectionHeadingLike -Text $HeadingText)) {
+    return $false
+  }
+
+  $nextText = Get-NodeText -Node $NextParagraph -NamespaceManager $NamespaceManager
+  return (-not [string]::IsNullOrWhiteSpace($nextText)) -and (-not (Is-PlaceholderLike -Text $nextText))
+}
+
+function Insert-SectionParagraphsBeforeLockedNext {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNode]$HeadingParagraph,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNode]$NextParagraph,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager,
+
+    [Parameter(Mandatory = $true)]
+    [string[]]$Paragraphs
+  )
+
+  $templateParagraph = Get-BlockParagraphTemplate -AnchorNode $HeadingParagraph -NamespaceManager $NamespaceManager
+  return Insert-ParagraphBlockBeforeNode `
+    -ParentNode $HeadingParagraph.ParentNode `
+    -ReferenceNode $NextParagraph `
+    -TemplateParagraph $templateParagraph `
+    -NamespaceManager $NamespaceManager `
+    -Paragraphs $Paragraphs
+}
+
 function Get-MappingTables {
   param(
     [AllowNull()]
@@ -1065,6 +1115,13 @@ try {
         if (Should-UseAfterHeadingFill -HeadingText $currentText -FillSpec $fillSpec -NextParagraph $nextParagraph -NamespaceManager $namespaceManager) {
           $insertedParagraphCount += Apply-ParagraphBlock -TargetParagraph $nextParagraph -NamespaceManager $namespaceManager -Paragraphs $fillSpec.Paragraphs
           $blockFillCount++
+        } elseif (Should-InsertBeforeLockedNextParagraph -HeadingText $currentText -FillSpec $fillSpec -NextParagraph $nextParagraph -NamespaceManager $namespaceManager) {
+          $insertedParagraphCount += Insert-SectionParagraphsBeforeLockedNext `
+            -HeadingParagraph $child `
+            -NextParagraph $nextParagraph `
+            -NamespaceManager $namespaceManager `
+            -Paragraphs $fillSpec.Paragraphs
+          $blockFillCount++
         } else {
           $insertedParagraphCount += Apply-ParagraphBlock -TargetParagraph $child -NamespaceManager $namespaceManager -Paragraphs $fillSpec.Paragraphs
           if ($fillSpec.Paragraphs.Count -gt 1) {
@@ -1106,6 +1163,14 @@ try {
 
           if (Should-UseAfterHeadingFill -HeadingText $currentText -FillSpec $fillSpec -NextParagraph $nextParagraph -NamespaceManager $namespaceManager) {
             $insertedParagraphCount += Apply-ParagraphBlock -TargetParagraph $nextParagraph -NamespaceManager $namespaceManager -Paragraphs $fillSpec.Paragraphs
+            $blockFillCount++
+            $labelFillCount++
+          } elseif (Should-InsertBeforeLockedNextParagraph -HeadingText $currentText -FillSpec $fillSpec -NextParagraph $nextParagraph -NamespaceManager $namespaceManager) {
+            $insertedParagraphCount += Insert-SectionParagraphsBeforeLockedNext `
+              -HeadingParagraph $child `
+              -NextParagraph $nextParagraph `
+              -NamespaceManager $namespaceManager `
+              -Paragraphs $fillSpec.Paragraphs
             $blockFillCount++
             $labelFillCount++
           } elseif ($isSectionHeading -and (($fillSpec.Mode -eq "after") -or ($fillSpec.Paragraphs.Count -gt 1))) {

@@ -51,6 +51,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 
 安装后新开一个 Codex 会话，直接描述你的实验报告需求、模板路径和截图路径即可。
 
+## 通用流水线与模板保真
+
+主流程现在按“材料解析 → 内容规划 → 正文生成 → 模板分析 → 图片筛选匹配 → DOCX 渲染 → 格式/布局/视觉验证”分阶段执行，每个阶段都写入 `pipeline-trace.json`，失败时可定位到具体阶段和错误代码。
+
+用户提供学校 DOCX 模板时，默认使用 `-TemplateStyleMode preserve`：
+
+- 先生成 `TemplateStyleContract`（产物为 `template-style-contract.json`），记录页面、字体、段落、标题层级、表格几何、边框、页眉页脚、分节和图注等有效样式；
+- 正文、元数据和图片按模板结构填入，不默认套用仓库的统一字体、边框或课程设计增强；
+- 生成后用 `format-validation.json` 对照模板契约逐项验证；
+- 只有显式传入 `-TemplateStyleMode normalize -StyleFinalDocx` 时，才应用仓库样式 profile。
+
+图片默认一图一行、图注在下。系统会按内容哈希去重，记录选择和拒绝原因；传入 `-RequestedImageCount` 时会严格满足数量，不会复制图片凑数。
+
+快速模式执行结构、布局和格式检查。严格模式额外执行 `DOCX → PDF → 每页预览 → 视觉检查`；缺少 LibreOffice 或视觉检查失败时，最终状态是 `needs-fix`，不会把未验收结果标成成功。
+
 ### 直接复制的提示词
 
 #### 1. 从教程链接和截图生成实验报告
@@ -58,23 +73,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 ```text
 请使用 experiment-report skill 帮我生成并填充一份中文实验报告。
 
-工作目录：
-E:\游戏\openclaw-experiment-report-skill
+工作目录：当前仓库目录
 
 基础信息：
 - 课程名称：计算机网络
 - 实验名称：局域网搭建与常用 DOS 命令使用
-- 学校模板：E:\实验报告\实验报告模版1.docx
-- 姓名：张三
+- 学校模板：.\materials\学校实验报告模板.docx
+- 姓名：示例学生
 - 学号：20260001
 - 班级：计科2401
-- 指导教师：李老师
+- 指导教师：示例教师
 
 材料：
 - 教程链接：https://blog.csdn.net/你的文章链接
 - 截图路径：
-  - E:\实验报告\images\step-1.png
-  - E:\实验报告\images\result-1.png
+  - .\materials\images\step-1.png
+  - .\materials\images\result-1.png
 
 要求：
 - 不要照抄教程，把教程改写成实验报告正文。
@@ -87,16 +101,16 @@ E:\游戏\openclaw-experiment-report-skill
 ```text
 我已经有实验报告正文，请帮我填进学校 docx 模板并整理格式。
 
-工作目录：
-E:\游戏\openclaw-experiment-report-skill
+工作目录：当前仓库目录
 
 请使用：
-- 模板：E:\实验报告\实验报告模版1.docx
-- 正文：E:\实验报告\report.txt
-- 输出目录：E:\实验报告\final-output
+- 模板：.\materials\学校实验报告模板.docx
+- 正文：.\materials\report.txt
+- 输出目录：.\outputs\final-report
 
 要求：
 - 保留学校模板原有表格、外框和标题结构。
+- 使用模板保真模式，不要默认统一字体或重建页面结构。
 - 自动补全姓名、学号、课程名、实验名等字段。
 - 如果我提供截图，也要插入到合适章节并生成具体图注。
 - 完成后给出最终 docx 路径和 layout check 结果。
@@ -107,14 +121,13 @@ E:\游戏\openclaw-experiment-report-skill
 ```text
 请按课程设计报告模式生成并填充报告。
 
-工作目录：
-E:\游戏\openclaw-experiment-report-skill
+工作目录：当前仓库目录
 
 项目信息：
 - 课程名称：软件工程课程设计
 - 题目：学生成绩管理系统
-- 模板路径：E:\课程设计\课程设计模板.docx
-- 输出目录：E:\课程设计\final-output
+- 模板路径：.\materials\课程设计模板.docx
+- 输出目录：.\outputs\course-design
 
 材料：
 - 需求说明、功能模块、数据库设计、运行截图和测试结果我会提供在当前对话或本地文件中。
@@ -152,8 +165,10 @@ E:\游戏\openclaw-experiment-report-skill
 - 默认主线聚焦 `experiment-report`，优先把常见中文实验报告做稳
 - 显式支持 `course-design-report`，适合课程设计报告和学校固定模板
 - 支持“已有正文直接填模板”和“从教程链接生成正文再填模板”两条路径
-- 支持截图插入、图注生成、每行 2 图 / 2x2 图片块等常见布局
-- 支持模板诊断、字段映射、布局检查和样式 profile
+- 用户模板默认保真，支持有效样式继承分析、契约缓存和生成后格式对照
+- 支持截图语义匹配、内容哈希去重、精确数量要求和图片选择清单
+- 默认一图一行；显式需要时仍支持每行 2 图 / 2x2 图片块
+- 支持快速/严格质量模式、逐阶段错误、PDF 逐页预览和视觉检查
 - 附带一键 demo、项目就绪检查、烟测、GitHub workflow、Issue / PR 模板和开源协作文档
 - 仓库内置演示素材和 3 个典型案例，适合做 GitHub 展示、录屏或简历项目
 
@@ -212,8 +227,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
   -ImageSpecsPath ".\examples\cases\network-dos\image-specs.json" `
   -RequirementsPath ".\examples\cases\network-dos\requirements.json" `
   -OutputDir ".\tests-output\network-dos-case" `
-  -StyleFinalDocx `
-  -StyleProfile auto
+  -TemplateStyleMode preserve
 ```
 
 ### 5. 教程链接 + 截图 + 学校模板
@@ -223,12 +237,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-url.ps1 `
   -ReferenceUrls "https://blog.csdn.net/..." `
   -CourseName "计算机网络" `
   -ExperimentName "局域网搭建与常用 DOS 命令使用" `
-  -TemplatePath "E:\reports\template.docx" `
-  -StudentName "张三" `
+  -TemplatePath ".\materials\template.docx" `
+  -StudentName "示例学生" `
   -StudentId "20260001" `
   -ClassName "计科 2201" `
-  -ImagePaths "E:\reports\step-1.png","E:\reports\result-1.png" `
-  -OutputDir "E:\reports\final-output"
+  -ImagePaths ".\materials\step-1.png",".\materials\result-1.png" `
+  -RequestedImageCount 2 `
+  -TemplateStyleMode preserve `
+  -OutputDir ".\outputs\from-url"
 ```
 
 ### 6. 飞书 / 直聊场景
@@ -240,12 +256,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
   -ReferenceUrls "https://blog.csdn.net/..." `
   -CourseName "计算机网络" `
   -ExperimentName "局域网搭建与常用 DOS 命令使用" `
-  -TemplatePath "E:\reports\template.docx" `
-  -StudentName "张三" `
+  -TemplatePath ".\materials\template.docx" `
+  -StudentName "示例学生" `
   -StudentId "20260001" `
   -ClassName "计科 2201" `
-  -ImagePaths "E:\reports\step-1.png","E:\reports\result-1.png" `
-  -OutputDir "E:\reports\final-output"
+  -ImagePaths ".\materials\step-1.png",".\materials\result-1.png" `
+  -RequestedImageCount 2 `
+  -TemplateStyleMode preserve `
+  -OutputDir ".\outputs\from-chat"
 ```
 
 课程设计报告请显式传：
@@ -274,16 +292,23 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
 
 ```text
 tests-output/network-dos-case/
-├─ summary.json
+├─ materials-analysis.json
+├─ content-plan.json
+├─ template-style-contract.json
 ├─ generated-field-map.json
 ├─ generated-image-map.json
+├─ image-manifest.json
 ├─ image-placement-plan.md
 ├─ layout-check.json
+├─ format-validation.json
+├─ visual-validation.json
+├─ pipeline-trace.json
+├─ summary.json
 ├─ report.cleaned.txt
 └─ <最终报告>.docx
 ```
 
-其中 `summary.json` 用来追踪本次生成链路，`layout-check.json` 用来检查图片、图注和版式，最终 `docx` 用来人工打开复核和交付。
+其中 `summary.json` 汇总最终状态，`pipeline-trace.json` 记录阶段与错误，模板契约和三类验证文件用于定位格式、布局与视觉风险，最终 `docx` 用来人工打开复核和交付。
 
 <!-- project-readiness:scenarios -->
 ## 适用场景
@@ -308,7 +333,8 @@ tests-output/network-dos-case/
 - 这个项目能降低照抄风险，但不能自动保证学术合规；提交前仍需使用者复核
 - 图像插入依赖本地图片路径可访问，截图模糊或信息不足时不能凭空补细节
 - `build-report-from-url.ps1` 属于可选智能长文通道，需要 OpenClaw CLI 和浏览器 profile 可用；稳定主线不依赖它
-- Word / WPS GUI 自动操作不是主路径；项目优先生成可检查的 `docx` 文件
+- 严格模式依赖 LibreOffice 完成稳定 PDF 导出，并依赖 PyMuPDF / Pillow 做逐页视觉检查
+- Word / WPS GUI 自动操作不是主路径；COM 兜底默认关闭，只能显式启用并受超时保护
 
 后续方向见 [ROADMAP.md](ROADMAP.md)。
 
@@ -322,6 +348,8 @@ experiment-report-skill/
 ├─ profiles/              报告 profile 定义
 ├─ references/            skill 运行时参考规则
 ├─ scripts/               主流程脚本、辅助脚本和检查脚本
+├─ tests/                 模板夹具、单元测试和端到端测试
+├─ universal_report/      模板契约、内容、图片、验证和配置核心
 ├─ agents/                Codex / OpenClaw UI 元数据
 ├─ SKILL.md               skill 主说明
 └─ README.md              项目首页
@@ -332,12 +360,16 @@ experiment-report-skill/
 1. [docs/usage-flow.md](docs/usage-flow.md)
 2. [examples/cases/README.md](examples/cases/README.md)
 3. [docs/template-filling.md](docs/template-filling.md)
-4. [docs/screenshot-evidence.md](docs/screenshot-evidence.md)
-5. [docs/csdn-reference-policy.md](docs/csdn-reference-policy.md)
+4. [docs/architecture.md](docs/architecture.md)
+5. [docs/compatibility.md](docs/compatibility.md)
+6. [docs/troubleshooting.md](docs/troubleshooting.md)
 
 ## 文档导航
 
 - [docs/README.md](docs/README.md)：文档总导航
+- [docs/architecture.md](docs/architecture.md)：分阶段流水线、模板契约和验证架构
+- [docs/compatibility.md](docs/compatibility.md)：平台、依赖、跨机器配置和模板边界
+- [docs/troubleshooting.md](docs/troubleshooting.md)：严格模式、格式漂移、图片数量和 Office 转换排障
 - [docs/usage-flow.md](docs/usage-flow.md)：完整使用流程
 - [docs/template-filling.md](docs/template-filling.md)：模板填充机制
 - [docs/csdn-reference-policy.md](docs/csdn-reference-policy.md)：CSDN 参考内容如何避免照抄
@@ -367,6 +399,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-one-click-demo.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\run-smoke-tests.ps1
 ```
 
+独立运行新核心与通用端到端场景：
+
+```powershell
+python -m unittest discover -s tests -v
+powershell -ExecutionPolicy Bypass -File .\tests\run-core-smoke.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\run-universal-e2e.ps1
+```
+
 可选 OpenClaw 智能通道检查：
 
 ```powershell
@@ -379,17 +419,19 @@ powershell -ExecutionPolicy Bypass -File .\scripts\self-check.ps1
 
 如果你想公开发布，先看 [docs/GITHUB_LAUNCH.md](docs/GITHUB_LAUNCH.md)；如果要同步做小红书 / 抖音内容，看 [docs/social-launch-kit.md](docs/social-launch-kit.md)。
 
-## Local Web UI
+## 本地 Web UI
 
-The repository includes a Gradio UI for local report generation. It supports the same common inputs used in chat: student info, course name, experiment name, requirements, reference links, DOCX/DOC template upload, screenshots, and code files. You can also paste the whole chat-style request into the "对话式需求" box, including CSDN links and screenshot-folder paths. By default it writes final artifacts to:
+仓库包含 Gradio 界面，支持学生信息、课程与实验名称、正文长度、参考链接、对话材料、DOCX/DOC 模板、截图和代码文件。上传模板默认走保真模式，界面会展示阶段进度、模板契约、图片清单、格式检查、视觉检查和质量建议。
 
-- `E:\实验报告\docx`
-- `E:\实验报告\pdf`
-- `E:\实验报告\预览图`
+默认工作目录是仓库下的 `outputs/web-ui/`，不会绑定某个盘符。可通过环境变量或 JSON 配置覆盖：
 
-If no template is uploaded, the experiment-report mode uses `E:\实验报告\00-模板\实验报告模版1.docx` when it exists. The course-design mode uses `E:\新建文件夹\课程设计-模板.doc` when it exists.
+```powershell
+$env:EXPERIMENT_REPORT_TEMPLATE_PATH = "D:\templates\experiment.docx"
+$env:EXPERIMENT_REPORT_OUTPUT_ROOT = "D:\report-output"
+$env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
+```
 
-Common fields include local history suggestions, including course name, experiment name, student info, and output root. The UI ships with `示例学生 / 20260001 / 计科2401` as the default student profile, and successful generations are saved to `outputs/web-ui/web-ui-history.json` so the next session can pick them from the dropdowns.
+成功生成后的历史选项保存在 `outputs/web-ui/web-ui-history.json`。
 
 Install the optional UI dependencies:
 
@@ -409,18 +451,14 @@ Then open:
 http://127.0.0.1:7860
 ```
 
-The page returns download buttons for DOCX, PDF, and a preview PNG, and it also displays the preview image in the page after generation. The default generation mode uses the faster local draft path for stable everyday runs. The smart long-form mode is still available when the local OpenClaw chat gateway is working; if it fails, the UI falls back to the local draft and keeps the warning in the UI.
-
-The `质量模式` field defaults to `快速生成`. Use `严格检查` only when a template is new, visually risky, or has produced narrow metadata cells before. Strict mode adds a lightweight readability guard for metadata tables and keeps the normal fast path unchanged.
-
-PDF export is optional and is deliberately separated from DOCX generation. The stable path is LibreOffice / `soffice`; WPS or Microsoft Word COM automation is disabled by default because it can hang when Office is busy. To allow WPS/Word fallback anyway, close Office/WPS windows and start the UI with:
+快速模式适合日常生成；严格模式会尝试导出 PDF、渲染全部页面并运行视觉检查。LibreOffice / `soffice` 是推荐路径。WPS 或 Microsoft Word COM 默认关闭，如明确接受本机 Office 自动化，可设置：
 
 ```powershell
 $env:EXPERIMENT_REPORT_ALLOW_OFFICE_COM = "1"
 python web_ui.py
 ```
 
-If PDF export fails, the DOCX is still kept and the UI shows a plain-language warning with the likely cause and log path. See [examples/web_demo.md](examples/web_demo.md).
+严格链路无法完成时，DOCX 和诊断文件仍会保留，但状态显示为 `needs-fix`。详见 [examples/web_demo.md](examples/web_demo.md)。
 
 ## License
 

@@ -8,6 +8,11 @@ The format is based on Keep a Changelog, and this project currently tracks chang
 
 ### Added
 
+- Added the `universal_report` core package for cross-machine configuration, structured pipeline traces, content planning, template contracts, image manifests, format validation, and strict visual validation.
+- Added `TemplateStyleContract` analysis with effective style inheritance, template-hash/version caching, page and section settings, role-based typography, table geometry, headers, footers, placeholders, and structural risks.
+- Added ten generated compatibility fixtures, Python unit tests, core smoke tests, five universal end-to-end scenarios, and real-template regression coverage.
+- Added `docs/architecture.md`, `docs/troubleshooting.md`, and `docs/compatibility.md`.
+- Added PowerShell entry points for template analysis, format validation, content planning, strict visual validation, legacy template conversion, and fixture generation.
 - Added `scripts/run-one-click-demo.ps1` so the repository now has a deterministic demo that can be run without preparing external templates or screenshots.
 - Added documentation indexes under `docs/`, `examples/`, `scripts/`, `profiles/`, and `references/` to make the repository easier to navigate on first open.
 - Added `docs/one-click-demo.md` and `docs/social-launch-kit.md` to cover the demo flow and public-facing launch materials.
@@ -22,6 +27,11 @@ The format is based on Keep a Changelog, and this project currently tracks chang
 
 ### Changed
 
+- User-supplied templates now default to fidelity-preserving mode; repository style normalization and course-design enhancements run only when explicitly requested or when using a repository default template.
+- The main wrappers and Web UI now expose structured progress, generation status, template/format/image/visual artifacts, exact image-count requests, and actionable quality recommendations.
+- Image handling now validates paths, deduplicates by content hash, records selection reasons, defaults to one image per line, and keeps image paragraphs with their captions where practical.
+- Strict mode now requires DOCX-to-PDF conversion, per-page preview rendering, and visual checks; incomplete validation returns `needs-fix`.
+- LibreOffice is preferred for conversion, while WPS/Microsoft Word COM is opt-in with timeout and scoped process cleanup.
 - Reworked `README.md` into a Chinese-first project homepage with clear positioning, quick-start commands, directory overview, and documentation navigation.
 - Refreshed the demo and example documentation so the repo reads like a complete open-source project instead of a loose collection of helper scripts.
 - Updated the example image JSON files to reference repo-contained demo assets instead of non-existent placeholder paths.
@@ -33,6 +43,9 @@ The format is based on Keep a Changelog, and this project currently tracks chang
 
 ### Fixed
 
+- Fixed block field filling so section body text no longer inherits a locked heading paragraph style.
+- Fixed template analyzer role sampling for table-heavy and cover/body templates, and versioned cache invalidation when analyzer rules change.
+- Fixed format validation so risks already present in the source template are not reported as newly introduced drift.
 - Fixed `install-skill.ps1` so editor metadata and Python cache artifacts are not copied into installed skill directories.
 - Fixed repository hygiene by ignoring Python cache artifacts such as `__pycache__/` and `*.pyc`.
 - Fixed the report-style formatter so it no longer leaks XML attribute return values into the PowerShell pipeline.

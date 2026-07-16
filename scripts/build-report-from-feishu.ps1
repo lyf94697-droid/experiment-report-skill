@@ -46,6 +46,8 @@ param(
 
   [string[]]$ImagePaths,
 
+  [int]$RequestedImageCount = -1,
+
   [string]$ImageArchiveDir,
 
   [string]$ImageSpecsPath,
@@ -85,6 +87,11 @@ param(
 
   [ValidateSet("fast", "strict")]
   [string]$QualityMode = "fast",
+
+  [ValidateSet("preserve", "normalize")]
+  [string]$TemplateStyleMode = "preserve",
+
+  [switch]$AllowOfficeCom,
 
   [ValidateSet("auto", "default", "compact", "school", "excellent")]
   [string]$StyleProfile = "auto",
@@ -229,7 +236,8 @@ $resolvedTemplatePath = Resolve-ExperimentReportTemplatePath `
   -ReportProfileName ([string]$reportProfile.name) `
   -ReportProfilePath ([string]$reportProfile.resolvedProfilePath) `
   -RepoRoot $repoRoot
-$templateFrameDefaulted = ((-not [bool]$CreateTemplateFrameDocx) -and [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath) -and (Test-ExperimentReportTemplateFrameDefault -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath)))
+$templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
+$templateFrameDefaulted = ($templatePathDefaulted -and (-not [bool]$CreateTemplateFrameDocx) -and [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath) -and (Test-ExperimentReportTemplateFrameDefault -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath)))
 $shouldCreateTemplateFrameDocx = ([bool]$CreateTemplateFrameDocx) -or (-not [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath)) -or $templateFrameDefaulted
 
 $generationInputsProvided = (-not [string]::IsNullOrWhiteSpace($PromptText)) -or `
@@ -313,10 +321,17 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     TemplatePath = $resolvedTemplatePath
     ReportPath = $resolvedReportPath
     OutputDir = $resolvedArtifactsDir
-    StyleFinalDocx = $true
     PipelineMode = $PipelineMode
     QualityMode = $QualityMode
+    DetailLevel = $(if ([string]::Equals($DetailLevel, "full", [System.StringComparison]::OrdinalIgnoreCase)) { "long" } else { "standard" })
+    TemplateStyleMode = $TemplateStyleMode
     StyleProfile = $StyleProfile
+  }
+  if ([string]::Equals($TemplateStyleMode, "normalize", [System.StringComparison]::OrdinalIgnoreCase)) {
+    $buildParams.StyleFinalDocx = $true
+  }
+  if ($AllowOfficeCom) {
+    $buildParams.AllowOfficeCom = $true
   }
 
   if (-not [string]::IsNullOrWhiteSpace($resolvedMetadataPath)) {
@@ -339,6 +354,9 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     $buildParams.ImagePaths = $archivedImagePaths
   } elseif ($null -ne $ImagePaths -and @($ImagePaths).Count -gt 0) {
     $buildParams.ImagePaths = $ImagePaths
+  }
+  if ($RequestedImageCount -ge 0) {
+    $buildParams.RequestedImageCount = $RequestedImageCount
   }
 
   if (-not [string]::IsNullOrWhiteSpace($resolvedStyleProfilePath)) {
@@ -406,6 +424,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     OutputDir = $resolvedArtifactsDir
     PipelineMode = $PipelineMode
     QualityMode = $QualityMode
+    TemplateStyleMode = $TemplateStyleMode
     StyleProfile = $StyleProfile
     DetailLevel = $DetailLevel
     OpenClawCmd = $OpenClawCmd
@@ -413,6 +432,9 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     ReferenceMaxChars = $ReferenceMaxChars
     SessionKey = $SessionKey
     PreparedInputsSummaryPath = $preparedInputsSummaryPath
+  }
+  if ($AllowOfficeCom) {
+    $buildParams.AllowOfficeCom = $true
   }
 
   if (-not [string]::IsNullOrWhiteSpace($resolvedMetadataPath)) {
@@ -435,6 +457,9 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedReportPath)) {
     $buildParams.ImagePaths = $archivedImagePaths
   } elseif ($null -ne $ImagePaths -and @($ImagePaths).Count -gt 0) {
     $buildParams.ImagePaths = $ImagePaths
+  }
+  if ($RequestedImageCount -ge 0) {
+    $buildParams.RequestedImageCount = $RequestedImageCount
   }
 
   if (-not [string]::IsNullOrWhiteSpace($resolvedStyleProfilePath)) {

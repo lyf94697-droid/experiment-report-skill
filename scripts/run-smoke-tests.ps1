@@ -537,8 +537,11 @@ try {
       (Join-Path $repoRoot 'demo\assets\result-ping.png'),
       (Join-Path $repoRoot 'demo\assets\result-arp.png'),
       (Join-Path $repoRoot 'docs\README.md'),
+      (Join-Path $repoRoot 'docs\architecture.md'),
+      (Join-Path $repoRoot 'docs\compatibility.md'),
       (Join-Path $repoRoot 'docs\one-click-demo.md'),
       (Join-Path $repoRoot 'docs\social-launch-kit.md'),
+      (Join-Path $repoRoot 'docs\troubleshooting.md'),
       (Join-Path $repoRoot 'examples\README.md'),
       (Join-Path $repoRoot 'examples\docx-field-map.json'),
       (Join-Path $repoRoot 'examples\docx-image-map.json'),
@@ -562,11 +565,13 @@ try {
       (Join-Path $repoRoot 'references\README.md'),
       (Join-Path $repoRoot 'references\template-fit.md'),
       (Join-Path $repoRoot 'scripts\apply-docx-field-map.ps1'),
+      (Join-Path $repoRoot 'scripts\analyze-docx-template.ps1'),
       (Join-Path $repoRoot 'scripts\build-report.ps1'),
       (Join-Path $repoRoot 'scripts\build-report-from-feishu.ps1'),
       (Join-Path $repoRoot 'scripts\build-report-from-url.ps1'),
       (Join-Path $repoRoot 'scripts\check-report-profile-template-fit.ps1'),
       (Join-Path $repoRoot 'scripts\check-docx-layout.ps1'),
+      (Join-Path $repoRoot 'scripts\convert-report-template.ps1'),
       (Join-Path $repoRoot 'scripts\extract-docx-template.ps1'),
       (Join-Path $repoRoot 'scripts\fetch-csdn-article.ps1'),
       (Join-Path $repoRoot 'scripts\fetch-web-article.ps1'),
@@ -576,6 +581,8 @@ try {
       (Join-Path $repoRoot 'scripts\generate-report-chat.ps1'),
       (Join-Path $repoRoot 'scripts\install-skill.ps1'),
       (Join-Path $repoRoot 'scripts\insert-docx-images.ps1'),
+      (Join-Path $repoRoot 'scripts\new-report-test-fixtures.ps1'),
+      (Join-Path $repoRoot 'scripts\plan-report-content.ps1'),
       (Join-Path $repoRoot 'scripts\prepare-report-prompt.ps1'),
       (Join-Path $repoRoot 'scripts\report-defaults.ps1'),
       (Join-Path $repoRoot 'scripts\report-profiles.ps1'),
@@ -583,8 +590,17 @@ try {
       (Join-Path $repoRoot 'scripts\reset-openclaw-session.ps1'),
       (Join-Path $repoRoot 'scripts\run-e2e-sample.ps1'),
       (Join-Path $repoRoot 'scripts\run-one-click-demo.ps1'),
+      (Join-Path $repoRoot 'scripts\run-visual-validation.ps1'),
       (Join-Path $repoRoot 'scripts\self-check.ps1'),
-      (Join-Path $repoRoot 'scripts\validate-report-draft.ps1')
+      (Join-Path $repoRoot 'scripts\universal-report-core.ps1'),
+      (Join-Path $repoRoot 'scripts\validate-docx-format.ps1'),
+      (Join-Path $repoRoot 'scripts\validate-report-draft.ps1'),
+      (Join-Path $repoRoot 'tests\run-core-smoke.ps1'),
+      (Join-Path $repoRoot 'tests\run-universal-e2e.ps1'),
+      (Join-Path $repoRoot 'tests\test_universal_report.py'),
+      (Join-Path $repoRoot 'universal_report\__init__.py'),
+      (Join-Path $repoRoot 'universal_report\cli.py'),
+      (Join-Path $repoRoot 'universal_report\template_contract.py')
     )) {
     Assert-True -Condition (Test-Path -LiteralPath $requiredPath) -Message "Missing required path: $requiredPath"
   }
@@ -684,6 +700,10 @@ try {
   Assert-True -Condition ($repoReadme -match 'ROADMAP\.md') -Message 'README is missing the roadmap link.'
   Assert-True -Condition ($repoReadme -match '仓库目录') -Message 'README is missing the repository structure section.'
   Assert-True -Condition ($repoReadme -match '文档导航') -Message 'README is missing the documentation navigation section.'
+  Assert-True -Condition ($repoReadme -match 'TemplateStyleContract') -Message 'README is missing the template-style contract guidance.'
+  Assert-True -Condition ($repoReadme -match 'TemplateStyleMode preserve') -Message 'README is missing the preserve-mode guidance.'
+  Assert-True -Condition ($repoReadme -match 'docs/architecture\.md') -Message 'README is missing the architecture document link.'
+  Assert-True -Condition ($repoReadme -match 'run-universal-e2e\.ps1') -Message 'README is missing universal end-to-end test guidance.'
   $results.Add('README wrapper documentation OK') | Out-Null
 
   $roadmapText = Get-Content -LiteralPath (Join-Path $repoRoot 'ROADMAP.md') -Raw -Encoding UTF8
@@ -2295,6 +2315,9 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\build-report.ps1')) -Message 'Install script did not copy build-report script.'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\build-report-from-feishu.ps1')) -Message 'Install script did not copy Feishu wrapper script.'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\build-report-from-url.ps1')) -Message 'Install script did not copy build-report-from-url script.'
+  Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\analyze-docx-template.ps1')) -Message 'Install script did not copy template analyzer script.'
+  Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\validate-docx-format.ps1')) -Message 'Install script did not copy format validator script.'
+  Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'universal_report\__init__.py')) -Message 'Install script did not copy the universal-report core package.'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\check-report-profile-template-fit.ps1')) -Message 'Install script did not copy the template-fit checker script.'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\check-docx-layout.ps1')) -Message 'Install script did not copy layout check script.'
   Assert-True -Condition (Test-Path -LiteralPath (Join-Path $installTarget 'scripts\fetch-web-article.ps1')) -Message 'Install script did not copy web fetch script.'
@@ -2338,6 +2361,36 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   Assert-True -Condition (@(Get-ChildItem -LiteralPath $defaultBackupRoot -Filter 'experiment-report.bak-*' -Force).Count -ge 1) -Message 'Default install layout did not move backups into skill-backups.'
   Assert-True -Condition (@(Get-ChildItem -LiteralPath (Join-Path $agentsHome 'skills') -Filter 'experiment-report.bak-*' -Force).Count -eq 0) -Message 'Default install layout left backup skill directories inside the scanned skills root.'
   $results.Add('install script backup isolation OK') | Out-Null
+
+  $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+  $pythonArgsPrefix = @()
+  if ($null -eq $pythonCommand) {
+    $pythonCommand = Get-Command py -ErrorAction SilentlyContinue
+    $pythonArgsPrefix = @('-3')
+  }
+  Assert-True -Condition ($null -ne $pythonCommand) -Message 'Python 3 is required for universal-report tests.'
+
+  Push-Location $repoRoot
+  try {
+    & $pythonCommand.Source @pythonArgsPrefix -m unittest discover -s tests -v
+    Assert-True -Condition ($LASTEXITCODE -eq 0) -Message 'Python universal-report unit tests failed.'
+  } finally {
+    Pop-Location
+  }
+  $results.Add('universal-report Python unit tests OK') | Out-Null
+
+  & (Join-Path $repoRoot 'tests\run-core-smoke.ps1') | Out-Null
+  $results.Add('universal-report core smoke OK') | Out-Null
+
+  $universalE2eOutputDir = Join-Path $tempRoot 'universal-e2e'
+  & (Join-Path $repoRoot 'tests\run-universal-e2e.ps1') -OutputDir $universalE2eOutputDir | Out-Null
+  $universalE2eSummaryPath = Join-Path $universalE2eOutputDir 'e2e-summary.json'
+  Assert-True -Condition (Test-Path -LiteralPath $universalE2eSummaryPath) -Message 'Universal end-to-end tests did not create e2e-summary.json.'
+  $universalE2eSummary = (Get-Content -LiteralPath $universalE2eSummaryPath -Raw -Encoding UTF8) | ConvertFrom-Json
+  Assert-True -Condition (@($universalE2eSummary.cases).Count -eq 5) -Message 'Universal end-to-end tests did not run all five required scenarios.'
+  Assert-True -Condition ((@($universalE2eSummary.cases | Where-Object { $_.generationStatus -eq 'completed' })).Count -eq 5) -Message 'A universal end-to-end fast-mode scenario did not complete.'
+  Assert-True -Condition ([string]$universalE2eSummary.strictMode.generationStatus -eq 'needs-fix') -Message 'Strict-mode dependency failure should remain structured as needs-fix.'
+  $results.Add('universal-report end-to-end scenarios OK') | Out-Null
 
   $resolvedOpenClaw = $null
   if (-not [string]::IsNullOrWhiteSpace($OpenClawCmd)) {

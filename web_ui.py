@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from universal_report.config import load_config
+
 try:
     import gradio as gr
 except ImportError as exc:  # pragma: no cover - shown only when the optional UI dependency is missing.
@@ -23,9 +25,15 @@ except ImportError as exc:  # pragma: no cover - shown only when the optional UI
 REPO_ROOT = Path(__file__).resolve().parent
 WEB_OUTPUT_ROOT = REPO_ROOT / "outputs" / "web-ui"
 HISTORY_PATH = WEB_OUTPUT_ROOT / "web-ui-history.json"
-DEFAULT_EXPERIMENT_TEMPLATE = Path(r"E:\实验报告\00-模板\实验报告模版1.docx")
-DEFAULT_COURSE_DESIGN_TEMPLATE = Path(r"E:\新建文件夹\课程设计-模板.doc")
-DEFAULT_DELIVERY_ROOT = Path(r"E:\实验报告")
+APP_CONFIG = load_config(REPO_ROOT)
+DEFAULT_EXPERIMENT_TEMPLATE = Path(str(APP_CONFIG["defaultTemplate"]))
+DEFAULT_COURSE_DESIGN_TEMPLATE = Path(
+    os.environ.get(
+        "EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH",
+        str(REPO_ROOT / "examples" / "report-templates" / "course-design-report-template.docx"),
+    )
+)
+DEFAULT_DELIVERY_ROOT = Path(str(APP_CONFIG["outputRoot"])) / "delivery"
 
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp"}
 TEMPLATE_EXTENSIONS = {".docx", ".doc"}
@@ -83,7 +91,7 @@ DEFAULT_WEB_UI_HISTORY = {
     "class_names": ["计科2401"],
     "course_names": ["计算机网络"],
     "experiment_names": ["根据教程链接填充"],
-    "screenshot_paths": [r"E:\实验报告\截图\计网实验六"],
+    "screenshot_paths": [],
     "code_paths": [],
     "output_roots": [str(DEFAULT_DELIVERY_ROOT)],
 }
@@ -467,12 +475,16 @@ $params = @{
   FinalDocxPath = [string]$payload.FinalDocxPath
   PipelineMode = [string]$payload.PipelineMode
   QualityMode = [string]$payload.QualityMode
+  TemplateStyleMode = [string]$payload.TemplateStyleMode
   StyleProfile = [string]$payload.StyleProfile
   DetailLevel = [string]$payload.DetailLevel
 }
 
 if ([bool]$payload.CreateTemplateFrameDocx) {
   $params.CreateTemplateFrameDocx = $true
+}
+if ([bool]$payload.AllowOfficeCom) {
+  $params.AllowOfficeCom = $true
 }
 
 $referenceTextPaths = @($payload.ReferenceTextPaths | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
@@ -758,8 +770,8 @@ def resolve_template_path(template_file: Any, report_type: str) -> Path:
     template_path = uploaded or default_template
     if template_path is None or not template_path.exists():
         raise UploadValidationError(
-            "未上传模板，也没有找到默认模板。实验报告默认模板应在 "
-            f"{DEFAULT_EXPERIMENT_TEMPLATE}；课程设计默认模板应在 {DEFAULT_COURSE_DESIGN_TEMPLATE}。"
+            "未上传模板，也没有找到可用的默认模板。可上传 DOCX/DOC，或通过 "
+            "EXPERIMENT_REPORT_TEMPLATE_PATH / EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH 配置默认模板。"
         )
     if template_path.suffix.lower() not in TEMPLATE_EXTENSIONS:
         raise UploadValidationError("模板只支持 .docx 或 .doc。")
@@ -1193,9 +1205,11 @@ def run_smart_pipeline(
             "FinalDocxPath": str(final_docx_path),
             "PipelineMode": "fast",
             "QualityMode": quality_mode,
+            "TemplateStyleMode": "preserve",
             "StyleProfile": "excellent",
             "DetailLevel": detail_level,
-            "CreateTemplateFrameDocx": report_profile == "experiment-report",
+            "CreateTemplateFrameDocx": False,
+            "AllowOfficeCom": os.environ.get("EXPERIMENT_REPORT_ALLOW_OFFICE_COM", "").strip() == "1",
             "ReferenceTextPaths": [str(path) for path in reference_paths],
             "ImagePaths": [str(path) for path in screenshot_paths],
         },
@@ -1252,8 +1266,6 @@ def run_local_pipeline(
     requirements_path = output_dir / "requirements.json"
     image_specs_path = output_dir / "image-specs.json"
     pipeline_dir = output_dir / "pipeline-local"
-    styled_docx_path = output_dir / f"{make_base_name(student_id, student_name, experiment_name)}-本地草稿.docx"
-
     report_text = build_local_report_text(
         report_type=report_type,
         course_name=course_name,
@@ -1289,20 +1301,19 @@ def run_local_pipeline(
         str(requirements_path),
         "-OutputDir",
         str(pipeline_dir),
-        "-StyledDocxOutPath",
-        str(styled_docx_path),
-        "-StyleFinalDocx",
         "-ReportProfileName",
         report_profile,
-        "-StyleProfile",
-        "excellent",
         "-PipelineMode",
         "fast",
         "-QualityMode",
         quality_mode,
+        "-TemplateStyleMode",
+        "preserve",
+        "-DetailLevel",
+        "long" if detail_level == "full" else "standard",
     ]
-    if report_profile == "experiment-report":
-        command.append("-CreateTemplateFrameDocx")
+    if os.environ.get("EXPERIMENT_REPORT_ALLOW_OFFICE_COM", "").strip() == "1":
+        command.append("-AllowOfficeCom")
     if screenshot_paths:
         command.extend(["-ImageSpecsPath", str(image_specs_path)])
 
@@ -1397,6 +1408,25 @@ def format_check_value(value: Any) -> str:
     return "未运行"
 
 
+def summarize_pipeline_stages(summary: dict[str, Any]) -> str:
+    trace_value = summary.get("corePipelineTracePath") or summary.get("pipelineTracePath")
+    if not trace_value:
+        return "未记录"
+    trace_path = Path(str(trace_value))
+    if not trace_path.exists():
+        return f"追踪文件不存在：{trace_path}"
+    try:
+        trace = json.loads(trace_path.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return f"无法读取：{trace_path}"
+    stages = trace.get("stages") or []
+    if not stages:
+        return "未记录阶段"
+    return " → ".join(
+        f"{stage.get('name', 'unknown')}[{stage.get('status', 'unknown')}]" for stage in stages
+    )
+
+
 def copy_final_artifacts(
     output_root_text: str,
     base_name: str,
@@ -1463,7 +1493,9 @@ def generate_report(
     template_file: Any,
     screenshot_files: Any,
     code_files: Any,
+    progress=gr.Progress(track_tqdm=True),
 ) -> tuple[str, str, str | None, str | None, str | None, str | None]:
+    progress(0.03, desc="校验输入与解析对话要求")
     warnings: list[str] = []
     generation_mode = str(generation_mode or "")
     detail_level_label = str(detail_level_label or "")
@@ -1550,12 +1582,14 @@ def generate_report(
     except OSError as exc:
         return "生成失败", f"复制上传材料失败：{exc}", None, None, None, None
 
+    progress(0.18, desc="整理模板、截图和代码材料")
     reference_dir = input_dir / "references"
     try:
         reference_paths = fetch_reference_texts(reference_urls, reference_dir, warnings)
     except Exception as exc:
         return "生成失败", f"参考链接处理失败：{exc}", None, None, None, None
     reference_paths.extend(write_reference_notes(reference_notes, reference_dir))
+    progress(0.32, desc="参考材料解析完成，正在规划正文")
 
     if title_needs_inference:
         inferred_name = infer_experiment_name(reference_paths, effective_requirement_text, reference_notes)
@@ -1597,6 +1631,7 @@ def generate_report(
     summary_path: Path
     generation_used = "快速本地草稿"
 
+    progress(0.45, desc="生成正文并填充用户模板")
     if generation_mode.startswith("智能"):
         try:
             summary, summary_path = run_smart_pipeline(
@@ -1665,11 +1700,13 @@ def generate_report(
         except Exception as exc:
             return "生成失败", str(exc), None, None, None, None
 
+    progress(0.78, desc="检查结构、格式与图片清单")
     try:
         source_docx = choose_final_docx(summary, None)
     except Exception as exc:
         return "生成失败", str(exc), None, None, None, None
 
+    progress(0.88, desc="复制交付文件并处理 PDF/预览")
     final_docx, final_pdf, final_preview = copy_final_artifacts(
         output_root_text=output_root,
         base_name=f"{base_name}-{timestamp}",
@@ -1686,23 +1723,46 @@ def generate_report(
         warnings.append("版式检查未通过，请打开 DOCX/PDF 复核外框、图注和分页。")
     if summary.get("validationPassed") is False:
         warnings.append("正文校验未通过，请查看输出目录中的 validation.json。")
+    if summary.get("formatValidationPassed") is False:
+        warnings.append("模板格式一致性检查未通过，请查看 format-validation.json。")
+    if summary.get("visualValidationPassed") is False:
+        warnings.append("严格模式视觉验收未通过，请查看 visual-validation.json。")
 
+    recommended_mode = str(summary.get("recommendedQualityMode") or "").strip()
+    recommendation_reasons = [str(item) for item in (summary.get("qualityRecommendationReasons") or []) if str(item).strip()]
+    if recommended_mode == "strict" and quality_mode != "strict":
+        reason_text = "；".join(recommendation_reasons) if recommendation_reasons else "模板结构复杂或存在版式风险"
+        warnings.append(f"质量模式建议：本模板推荐使用严格检查。原因：{reason_text}")
+
+    generation_status = str(summary.get("generationStatus") or "completed")
+    selected_image_count = summary.get("expectedLayoutImageCount")
+    if selected_image_count is None:
+        selected_image_count = len(copied_screenshots)
     status_lines = [
-        "生成成功",
+        "生成成功" if generation_status == "completed" else "生成完成，但存在需要修复的检查项",
         f"生成方式：{generation_used}",
         f"质量模式：{'严格检查' if quality_mode == 'strict' else '快速生成'}",
+        f"流水线状态：{generation_status}",
+        f"流水线阶段：{summarize_pipeline_stages(summary)}",
+        f"模板模式：{'保留用户模板格式' if summary.get('templateStylePreserved') else '显式规范化/框架转换'}",
+        f"建议质量模式：{recommended_mode or '未提供'}",
         f"工作目录：{output_dir}",
         f"摘要文件：{summary_path}",
+        f"模板契约：{summary.get('templateContractPath') or '未生成'}",
+        f"图片清单：{summary.get('imageManifestPath') or '未生成'}",
         f"DOCX：{final_docx}",
         f"PDF：{final_pdf if final_pdf else '未生成'}",
         f"预览图：{final_preview if final_preview else '未生成'}",
         f"版式检查：{format_check_value(summary.get('layoutCheckPassed'))}",
+        f"模板格式检查：{format_check_value(summary.get('formatValidationPassed'))}",
+        f"视觉验收：{format_check_value(summary.get('visualValidationPassed'))}",
         f"正文校验：{format_check_value(summary.get('validationPassed'))}",
-        f"截图数量：{len(copied_screenshots)}",
+        f"选用图片数量：{selected_image_count}",
         f"代码文件数量：{len(copied_code_files)}",
     ]
     warning_text = "\n".join(dict.fromkeys(line for line in warnings if line.strip()))
     preview_value = str(final_preview) if final_preview else None
+    progress(1.0, desc="生成完成")
     return "\n".join(status_lines), warning_text, str(final_docx), str(final_pdf) if final_pdf else None, preview_value, preview_value
 
 
@@ -1712,6 +1772,10 @@ def create_app() -> gr.Blocks:
 
     with gr.Blocks(title="实验报告生成 Web UI") as app:
         gr.Markdown("# 实验报告生成 Web UI")
+        gr.Markdown(
+            "上传模板时默认保留原有页面、字体、段落、表格、页眉页脚和边框；"
+            "复杂模板建议选择“严格检查”。严格模式需要 LibreOffice 才能完成 PDF 逐页视觉验收。"
+        )
 
         with gr.Row():
             report_type = gr.Radio(
@@ -1798,15 +1862,18 @@ def create_app() -> gr.Blocks:
         with gr.Row():
             screenshot_path_text = gr.Textbox(
                 label="本地截图文件夹/文件路径",
-                placeholder=r'E:\实验报告\截图\计网实验六',
+                placeholder="可留空；可信本机模式下可填写截图目录",
             )
             code_path_text = gr.Textbox(
                 label="本地代码文件夹/文件路径",
-                placeholder=r'E:\某项目\src',
+                placeholder="可留空；可信本机模式下可填写代码目录",
             )
 
         with gr.Row():
-            template_file = gr.File(label="上传 docx/doc 模板（不传则使用默认模板）", file_types=[".docx", ".doc"])
+            template_file = gr.File(
+                label="上传 DOCX/DOC 模板（默认只填内容，不统一套版）",
+                file_types=[".docx", ".doc"],
+            )
             screenshot_files = gr.File(label="上传运行截图", file_count="multiple", file_types=sorted(IMAGE_EXTENSIONS))
             code_files = gr.File(label="上传代码文件", file_count="multiple")
 

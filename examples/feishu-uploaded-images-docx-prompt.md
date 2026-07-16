@@ -16,34 +16,34 @@
 “当前运行时没有暴露附件文件路径，无法稳定把手机/飞书上传图片直接插入 docx。”
 不要假装已经插入成功。
 
-工作目录：
-E:\游戏\openclaw-experiment-report-skill
+工作目录：当前仓库目录
 
 请直接运行：
 
 powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 `
   -ReferenceUrls "https://blog.csdn.net/你的文章链接" `
   -CourseName "计算机网络" `
-  -TemplatePath "E:\实验报告\实验报告模版1.docx" `
+  -TemplatePath ".\materials\实验报告模板.docx" `
   -StudentName "示例学生" `
   -StudentId "20260001" `
   -ClassName "计科2401" `
-  -TeacherName "李老师" `
+  -TeacherName "示例教师" `
   -ExperimentProperty "③验证性实验" `
   -ExperimentDate "2026年4月2日" `
   -ExperimentLocation "睿智楼四栋212" `
   -ImagePaths `
     "从 [media attached ...] 行提取出的第 1 个真实图片路径", `
     "从 [media attached ...] 行提取出的第 2 个真实图片路径" `
-  -OutputDir "E:\实验报告\新建文件夹" `
-  -StyleProfile auto `
+  -OutputDir ".\outputs\from-feishu" `
+  -TemplateStyleMode preserve `
   -DetailLevel full
 
 要求：
 - 图片按上传顺序编号为图1、图2、图3……
 - 如果我没有额外说明图片归属，请根据图片内容判断属于实验步骤还是实验结果
 - 如果能看出每张图在做什么，请优先使用 `-ImageSpecsJson` 或 `-ImageSpecsPath` 写明每张图的 `caption` 和 `section`，不要只写“实验步骤截图”或“实验结果截图”这类泛化图注
-- 如果图片数量适合分组，优先使用每行 2 张的分组布局；只有图片文字明显看不清或我明确要求单张时，才改用单张堆叠布局
+- 默认一图一行、图注在下；只有我明确要求并排或网格时才使用每行 2 张布局
+- 按内容哈希去重；如果我指定图片数量，必须严格满足，不能重复图片凑数
 - ipconfig、ping、arp -a 等 DOS/终端命令必须单独成段，不要和说明文字写在同一段，方便最终 docx 自动套用命令块排版
 - 正文根据教程和我上传的图片来写
 - 最终 docx 必须真正插入图片文件

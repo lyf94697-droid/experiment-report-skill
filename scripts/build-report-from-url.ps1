@@ -44,6 +44,8 @@ param(
 
   [string[]]$ImagePaths,
 
+  [int]$RequestedImageCount = -1,
+
   [string]$ImageSpecsPath,
 
   [string]$ImageSpecsJson,
@@ -73,6 +75,11 @@ param(
 
   [ValidateSet("fast", "strict")]
   [string]$QualityMode = "fast",
+
+  [ValidateSet("preserve", "normalize")]
+  [string]$TemplateStyleMode = "preserve",
+
+  [switch]$AllowOfficeCom,
 
   [ValidateSet("auto", "default", "compact", "school", "excellent")]
   [string]$StyleProfile = "auto",
@@ -261,6 +268,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDir)) {
 $resolvedOutputDir = [System.IO.Path]::GetFullPath($OutputDir)
 New-Item -ItemType Directory -Path $resolvedOutputDir -Force | Out-Null
 
+$templatePathDefaulted = (-not $PSBoundParameters.ContainsKey("TemplatePath") -or [string]::IsNullOrWhiteSpace($TemplatePath))
 $resolvedTemplatePath = if ([string]::IsNullOrWhiteSpace($TemplatePath) -and -not (Test-IsExperimentReportProfile -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath))) {
   $null
 } else {
@@ -277,7 +285,7 @@ $resolvedPreGeneratedReportPath = Resolve-AbsolutePathIfProvided -Path $PreGener
 $resolvedImagePlanOutPath = if ([string]::IsNullOrWhiteSpace($ImagePlanOutPath)) { $null } else { [System.IO.Path]::GetFullPath($ImagePlanOutPath) }
 $resolvedFinalDocxPath = if ([string]::IsNullOrWhiteSpace($FinalDocxPath)) { $null } else { [System.IO.Path]::GetFullPath($FinalDocxPath) }
 $resolvedTemplateFrameDocxPath = if ([string]::IsNullOrWhiteSpace($TemplateFrameDocxPath)) { $null } else { [System.IO.Path]::GetFullPath($TemplateFrameDocxPath) }
-$templateFrameDefaulted = ((-not [bool]$CreateTemplateFrameDocx) -and [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath) -and (Test-ExperimentReportTemplateFrameDefault -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath)))
+$templateFrameDefaulted = ($templatePathDefaulted -and (-not [bool]$CreateTemplateFrameDocx) -and [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath) -and (Test-ExperimentReportTemplateFrameDefault -ReportProfileName ([string]$reportProfile.name) -ReportProfilePath ([string]$reportProfile.resolvedProfilePath)))
 $shouldCreateTemplateFrameDocx = ([bool]$CreateTemplateFrameDocx) -or (-not [string]::IsNullOrWhiteSpace($TemplateFrameDocxPath)) -or $templateFrameDefaulted
 $inputSummaryPath = if ([string]::IsNullOrWhiteSpace($resolvedPreparedInputsSummaryPath)) {
   Join-Path $resolvedOutputDir "report-inputs-summary.json"
@@ -393,10 +401,17 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedTemplatePath)) {
     TemplatePath = $resolvedTemplatePath
     ReportPath = $cleanedReportPath
     OutputDir = $resolvedOutputDir
-    StyleFinalDocx = $true
     PipelineMode = $PipelineMode
     QualityMode = $QualityMode
+    DetailLevel = $(if ([string]::Equals($DetailLevel, "full", [System.StringComparison]::OrdinalIgnoreCase)) { "long" } else { "standard" })
+    TemplateStyleMode = $TemplateStyleMode
     StyleProfile = $StyleProfile
+  }
+  if ([string]::Equals($TemplateStyleMode, "normalize", [System.StringComparison]::OrdinalIgnoreCase)) {
+    $buildParams.StyleFinalDocx = $true
+  }
+  if ($AllowOfficeCom) {
+    $buildParams.AllowOfficeCom = $true
   }
 
   if (-not [string]::IsNullOrWhiteSpace($effectiveMetadataPath)) {
@@ -417,6 +432,9 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedTemplatePath)) {
     $buildParams.ImageSpecsJson = $ImageSpecsJson
   } elseif ($null -ne $ImagePaths -and @($ImagePaths).Count -gt 0) {
     $buildParams.ImagePaths = $ImagePaths
+  }
+  if ($RequestedImageCount -ge 0) {
+    $buildParams.RequestedImageCount = $RequestedImageCount
   }
 
   if (-not [string]::IsNullOrWhiteSpace($resolvedStyleProfilePath)) {
@@ -622,6 +640,9 @@ $wrapperSummary = [pscustomobject]@{
   generationMode = $generationMode
   pipelineMode = $PipelineMode
   qualityMode = $QualityMode
+  templateStyleMode = $TemplateStyleMode
+  generationStatus = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "generationStatus") { [string]$buildSummary.generationStatus } else { "completed" })
+  templateStylePreserved = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "templateStylePreserved") { [bool]$buildSummary.templateStylePreserved } else { $false })
   promptPath = $promptPathOut
   requestedReferenceUrls = $(if ($inputSummary.PSObject.Properties.Name -contains "requestedReferenceUrls") { @($inputSummary.requestedReferenceUrls) } else { @() })
   referenceUrls = $effectiveReferenceUrlList
@@ -636,8 +657,18 @@ $wrapperSummary = [pscustomobject]@{
   styleProfilePath = $resolvedStyleProfilePath
   preGeneratedReportPath = $resolvedPreGeneratedReportPath
   pipelineTracePath = $pipelineTracePath
+  corePipelineTracePath = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "pipelineTracePath") { [string]$buildSummary.pipelineTracePath } else { $null })
   pipelineTraceMarkdownPath = $pipelineTraceMarkdownPath
   buildSummaryPath = $buildSummaryPath
+  templateContractPath = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "templateContractPath") { [string]$buildSummary.templateContractPath } else { $null })
+  imageManifestPath = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "imageManifestPath") { [string]$buildSummary.imageManifestPath } else { $null })
+  recommendedQualityMode = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "recommendedQualityMode") { [string]$buildSummary.recommendedQualityMode } else { $null })
+  qualityRecommendationReasons = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "qualityRecommendationReasons") { @($buildSummary.qualityRecommendationReasons) } else { @() })
+  formatValidationPath = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "formatValidationPath") { [string]$buildSummary.formatValidationPath } else { $null })
+  formatValidationPassed = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "formatValidationPassed") { $buildSummary.formatValidationPassed } else { $null })
+  visualValidationPath = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "visualValidationPath") { [string]$buildSummary.visualValidationPath } else { $null })
+  visualValidationPassed = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "visualValidationPassed") { $buildSummary.visualValidationPassed } else { $null })
+  expectedLayoutImageCount = $(if ($null -ne $buildSummary -and $buildSummary.PSObject.Properties.Name -contains "expectedLayoutImageCount") { $buildSummary.expectedLayoutImageCount } else { $null })
   buildReportInputMode = $buildReportInputMode
   buildMetadataInputMode = $buildMetadataInputMode
   buildRequirementsInputMode = $buildRequirementsInputMode

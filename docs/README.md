@@ -3,20 +3,32 @@
 建议按下面顺序阅读：
 
 1. [README.md](../README.md)
-2. [usage-flow.md](usage-flow.md)
-3. [template-filling.md](template-filling.md)
-4. [screenshot-evidence.md](screenshot-evidence.md)
-5. [csdn-reference-policy.md](csdn-reference-policy.md)
-6. [one-click-demo.md](one-click-demo.md)
-7. [course-design-fastline.md](course-design-fastline.md)
+2. [architecture.md](architecture.md)
+3. [usage-flow.md](usage-flow.md)
+4. [template-filling.md](template-filling.md)
+5. [compatibility.md](compatibility.md)
+6. [troubleshooting.md](troubleshooting.md)
+7. [screenshot-evidence.md](screenshot-evidence.md)
+8. [csdn-reference-policy.md](csdn-reference-policy.md)
+9. [one-click-demo.md](one-click-demo.md)
+10. [course-design-fastline.md](course-design-fastline.md)
 
 ## 核心文档
+
+- [architecture.md](architecture.md)
+  说明分阶段流水线、`TemplateStyleContract`、保留/规范化模式、图片清单和严格验证链路。
 
 - [usage-flow.md](usage-flow.md)
   从收集材料、生成正文、填模板、插截图到交付检查的完整流程。
 
 - [template-filling.md](template-filling.md)
   解释模板提取、字段映射、章节段落映射、profile 和常见失败处理。
+
+- [compatibility.md](compatibility.md)
+  说明 PowerShell、Python、DOC/DOCX、LibreOffice、Office COM 和跨机器配置。
+
+- [troubleshooting.md](troubleshooting.md)
+  说明严格模式、格式漂移、图片数量、竖排风险、中文路径和缓存排障。
 
 - [csdn-reference-policy.md](csdn-reference-policy.md)
   说明 CSDN / 教程链接如何作为参考材料使用，如何区分事实来源和文字表达，避免照抄。

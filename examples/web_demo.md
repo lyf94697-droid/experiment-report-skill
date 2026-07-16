@@ -1,114 +1,112 @@
-# Web UI Demo
+# Web UI 演示
 
-This example shows how to start the local Web UI and generate DOCX, PDF, and preview PNG artifacts from browser-uploaded materials.
+本示例说明如何从浏览器上传模板、截图、代码和文字材料，生成 DOCX 及结构化诊断产物。DOCX 是主交付物；PDF 和逐页预览用于严格模式验收。
 
-DOCX is the primary output. PDF and preview PNG are optional convenience outputs: the UI first tries LibreOffice / `soffice` for stable headless PDF export. WPS/Microsoft Word COM fallback is disabled by default because it can hang when Office is busy.
+## 启动
 
-## Start
-
-Install the optional UI dependencies:
+安装可选依赖：
 
 ```powershell
 python -m pip install -r requirements-web.txt
 ```
 
-Start the UI:
+启动界面：
 
 ```powershell
 python web_ui.py
 ```
 
-Open:
+浏览器打开：
 
 ```text
 http://127.0.0.1:7860
 ```
 
-## Inputs
+## 输入
 
-Fill these fields:
+界面支持：
 
-- 报告类型
-- 生成方式
-- 正文长度
-- 课程名称
-- 常用学生资料
-- 学生姓名
-- 学号
-- 班级
-- 实验名称/题目名称
-- 实验要求
-- 参考链接或补充说明
-- 对话式需求
-- 本地截图文件夹/文件路径
-- 本地代码文件夹/文件路径
+- 实验报告或课程设计报告
+- 快速本地草稿或智能长文模式
+- 快速生成或严格检查
+- 课程、题目、学生信息和实验要求
+- 对话式需求、教程链接和补充说明
+- 可选 DOCX / DOC 模板
+- 多张截图和多个代码文件
+- 可信本机环境下的本地目录或文件路径
 
-Upload:
+手工填写字段的优先级高于对话式文本自动提取。
 
-- an optional `.docx` or `.doc` template
-- one or more result screenshots
-- one or more code files
+## 模板保真
 
-If no template is uploaded, experiment reports use `E:\实验报告\00-模板\实验报告模版1.docx` when available. Course-design reports use `E:\新建文件夹\课程设计-模板.doc` when available.
+上传用户模板时默认使用 `TemplateStyleMode=preserve`。系统会：
 
-The student profile dropdown starts with `示例学生 / 20260001 / 计科2401`. Course name, experiment name, student name, ID, class, and output root are editable dropdowns: click them to pick local history, or type a new value. Successful generations update `outputs/web-ui/web-ui-history.json` for the next session.
+1. 分析页面、字体、段落、标题、表格、边框、页眉页脚和分节。
+2. 生成 `template-style-contract.json`。
+3. 按模板结构填入正文、字段和图片。
+4. 生成 `format-validation.json`，逐项检查关键格式是否漂移。
 
-The chat-style box can accept text like:
+界面不会为上传模板默认开启统一样式或自动重建外框。只有显式选择规范化时，才使用仓库样式 profile。
 
-```text
-CSDN链接：https://example.com/article
-课程名称：计算机网络
-实验名称：根据教程链接填充
-姓名：示例学生
-学号：20260001
-班级：计科2401
-截图材料："E:\实验报告\截图\计网实验六"
-```
+## 进度与结果
 
-Manual fields take priority. Empty fields are filled from the chat-style text where possible.
+点击“生成报告”后，界面会显示：
 
-## Output
+- 当前阶段与整体进度
+- 最终状态、警告和可执行的修复建议
+- 模板契约摘要
+- 图片选择、去重和数量结果
+- 布局、格式和视觉验证状态
+- DOCX、PDF、预览图和诊断文件路径
 
-Click `生成报告`. The page shows:
+常见阶段包括材料解析、内容规划、模板分析、图片匹配、DOCX 渲染、布局验证、格式验证和视觉验证。
 
-- generation status
-- warnings or errors
-- a DOCX download button
-- a PDF download button
-- a preview PNG download button
-- an in-page preview image
+## 图片
 
-Generated artifacts are copied to the selected output root, defaulting to:
+默认是一图一行、图注在下。图片先按内容哈希去重，再按文件名和章节语义匹配。若指定精确图片数量，可在脚本入口使用 `-RequestedImageCount`；可用图片不足时会明确失败，不会重复图片凑数。
 
-```text
-E:\实验报告\docx
-E:\实验报告\pdf
-E:\实验报告\预览图
-```
+## 快速模式与严格模式
 
-The working files are also kept under:
+- 快速模式：完成结构、布局和格式检查，适合日常生成。
+- 严格模式：额外执行 `DOCX → PDF → 每页 PNG → 视觉检查`。任何一环无法完成，状态为 `needs-fix`。
 
-```text
-outputs/web-ui/
-```
+严格模式推荐安装 LibreOffice，并确保 `soffice` 可用。逐页预览需要 PyMuPDF / Pillow。
 
-## PDF And Errors
-
-- For stable PDF export, install LibreOffice and make sure `soffice` is available on `PATH`.
-- If you want to allow WPS/Word fallback, close WPS/Word windows first and start the UI with:
+WPS / Microsoft Word COM 默认关闭。如果用户明确允许本机 Office 自动化，可在启动前设置：
 
 ```powershell
 $env:EXPERIMENT_REPORT_ALLOW_OFFICE_COM = "1"
 python web_ui.py
 ```
 
-- If PDF export fails, the DOCX still succeeds and remains downloadable.
-- Generation failures are shown with a short human-readable cause, the likely next step, and a log path under the working output directory.
+COM 兜底有超时保护，只清理本次自动化新启动的 Office 进程。
 
-## Notes
+## 跨机器配置
 
-- `快速本地草稿` is the default mode for stable everyday runs.
-- `智能长文（接近对话效果）` uses the local OpenClaw chat gateway when available.
-- `质量模式` defaults to `快速生成`; choose `严格检查` for new or visually risky templates so the UI also checks metadata-table readability.
-- If the chat gateway is unavailable, the UI falls back to `快速本地草稿` and shows the reason in the warning box.
-- PDF export prefers LibreOffice. WPS/Microsoft Word fallback is opt-in with `EXPERIMENT_REPORT_ALLOW_OFFICE_COM=1`. Preview PNG rendering uses PyMuPDF.
+默认输出位于仓库的 `outputs/web-ui/`。可以通过环境变量设置模板、输出和缓存目录：
+
+```powershell
+$env:EXPERIMENT_REPORT_TEMPLATE_PATH = "D:\templates\experiment.docx"
+$env:EXPERIMENT_REPORT_COURSE_DESIGN_TEMPLATE_PATH = "D:\templates\course-design.docx"
+$env:EXPERIMENT_REPORT_OUTPUT_ROOT = "D:\report-output"
+$env:EXPERIMENT_REPORT_CACHE_ROOT = "D:\report-cache"
+```
+
+也可指定 JSON 配置：
+
+```powershell
+$env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
+```
+
+环境变量优先于配置文件，配置文件优先于仓库默认值。
+
+## 本地路径安全
+
+浏览器上传是默认方式。只有可信本机环境需要直接读取填写的路径时，才启用：
+
+```powershell
+$env:OPENCLAW_WEB_UI_ALLOW_LOCAL_PATHS = "1"
+python web_ui.py
+```
+
+生成失败时，界面会保留 DOCX、日志和 JSON 诊断，并给出失败阶段与下一步建议。

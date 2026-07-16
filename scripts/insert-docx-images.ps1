@@ -1059,6 +1059,7 @@ function New-ImageParagraph {
   $paragraphXml = @"
 <w:p xmlns:w="$wordNamespace" xmlns:r="$officeDocumentRelationshipNamespace" xmlns:wp="$wordprocessingDrawingNamespace" xmlns:a="$drawingNamespace" xmlns:pic="$pictureNamespace">
   <w:pPr>
+    <w:keepNext/>
     <w:jc w:val="center"/>
     <w:spacing w:before="80" w:after="80"/>
   </w:pPr>
@@ -1116,6 +1117,7 @@ function New-CaptionParagraph {
   $paragraphXml = @"
 <w:p xmlns:w="$wordNamespace">
   <w:pPr>
+    <w:keepLines/>
     <w:jc w:val="center"/>
     <w:ind w:left="0" w:right="0" w:firstLine="0"/>
     <w:spacing w:before="0" w:after="80"/>

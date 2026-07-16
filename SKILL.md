@@ -23,8 +23,8 @@ description: Write Chinese university lab reports and course-design reports, or 
    - If the user already provides enough facts to write the report body, do not stop to ask for optional metadata such as name, class, date, or template files.
 2. Write the full report content before touching template formatting.
 3. If critical facts are missing, do not fabricate exact data, screenshots, or measurements.
-4. If a local docx template exists and shell execution is available, run `scripts/extract-docx-template.ps1 -Path <template.docx>` first.
-5. Use the extracted outline, table cells, and likely fields as the template source of truth.
+4. If a local docx template exists and shell execution is available, run `scripts/analyze-docx-template.ps1 -TemplatePath <template.docx>` first. Use `scripts/extract-docx-template.ps1 -Path <template.docx>` when a readable outline is also useful.
+5. Treat the generated `TemplateStyleContract` and extracted structure as the source of truth. The contract includes effective style inheritance, page setup, title/body/caption roles, table geometry, headers, footers, sections, image placeholders, and structural risks.
 6. If a template exists, adapt the finished content to the template order and field names.
 7. If the user explicitly wants a filled local docx output and the template matches common report patterns, generate a field map with `scripts/generate-docx-field-map.ps1` and then run `scripts/apply-docx-field-map.ps1`.
    - Use label keys for normal blank-field filling.
@@ -32,7 +32,7 @@ description: Write Chinese university lab reports and course-design reports, or 
    - Use `mode: "after"` when the template keeps a fixed heading paragraph and the actual content should go into the following blank paragraph.
    - Use location keys such as `P2` or `T1R1C2` only when explicit overwrite is needed.
 8. If the user also provides screenshots or experiment photos and wants them embedded into the final docx, prefer `scripts/generate-docx-image-map.ps1` on the filled copy and then run `scripts/insert-docx-images.ps1`.
-9. If the user wants a cleaner final docx layout, run `scripts/format-docx-report-style.ps1` after template filling and optional image insertion.
+9. Preserve user-template formatting by default. Run `scripts/format-docx-report-style.ps1` only when there is no user template, or when the user explicitly asks for normalization or a repository style profile.
 10. Prefer content-first completion over fragile GUI wandering.
 11. If screenshots are provided, treat them as factual evidence and layout assets.
 12. If a tutorial page is provided, treat it as procedural reference and rewrite it into report-style Chinese instead of copying it.
@@ -45,17 +45,17 @@ description: Write Chinese university lab reports and course-design reports, or 
 19. If direct chat includes uploaded image attachments and the user also provides local image paths, use the uploaded images to understand the visible content and use the local image paths as the actual files for deterministic `docx` embedding.
 20. If direct chat includes uploaded image attachments but no manual local image paths, check whether the runtime injected attachment note lines such as `[media attached ...]` into the prompt. If those lines contain usable image file paths, extract them and pass them into `-ImagePaths` for the local wrapper instead of stopping at body-only output.
 
-## Fixed visual standards
+## Template fidelity and visual standards
 
-- When the user says to use the previous standard, the fixed standard is: experiment reports keep the original-template outer frame, course-design reports use a large standalone flowchart, and generated flowchart titles have no side decoration lines.
-- For experiment-report template-frame output, keep normal table lines in the top metadata table. Put the body into one full-width framed body area, without horizontal separator lines between paragraphs or sections.
-- For `experiment-report`, default to the teacher excellent-example style: `云南师范大学信息学院` heading, compact `实验报告` title, metadata table, one outer body frame, 12pt SimSun body text, about 15pt bold SimSun section headings, about 22pt SimSun report title, and dense full-page body content.
-- For `experiment-report` screenshots, use large centered single images by default with a `15.8 cm` lower-bound width. Do not auto-collapse screenshots into a two-column row unless the input explicitly requests a row or 2x2 layout.
-- For `course-design-report`, render the overall design flowchart / process diagram near full body width. The default lower bound is `15.8 cm`.
-- Do not auto-place course-design flowcharts side by side with screenshots. Flowcharts are standalone design diagrams; screenshots can still use row layouts when they are clearly paired.
-- For generated black-and-white flowcharts, keep the title as centered text only. Do not draw left/right decorative horizontal lines around the title.
-- After generating a local `docx`, run the strongest practical layout check available. For important deliverables, export or render pages and visually check the frame, flowchart size, and line overlap before claiming completion.
-- Keep these rules scoped to Chinese lab reports and course-design reports. Do not turn them into a generic document platform or graph engine unless explicitly requested.
+- A user-supplied DOCX template has the highest formatting priority. Default to `-TemplateStyleMode preserve`; do not replace its page setup, fonts, paragraph spacing, title hierarchy, tables, borders, headers, footers, sections, or caption style with repository defaults.
+- Before rendering, create or reuse a `TemplateStyleContract`. After rendering, run `scripts/validate-docx-format.ps1` and report the exact failed contract items instead of saying only that formatting is wrong.
+- Use `-TemplateStyleMode normalize -StyleFinalDocx` only for the repository default template, demo output, or an explicit user request to unify styling.
+- Default image layout is one image per line with a concrete caption below it. Preserve aspect ratio, keep the image and caption together when practical, and use row/grid layouts only when explicitly requested.
+- Honor an exact requested image count. Deduplicate by content hash and record selected, rejected, and duplicate files plus selection reasons in `image-manifest.json`; never duplicate an image merely to reach the count.
+- Course-design flowcharts, generated structure tables, large fixed image widths, and other profile enhancements are allowed only for a default/normalized template. Do not inject them automatically into an unrelated user template.
+- Fast mode must still run structural, layout, and format validation. Strict mode must export DOCX to PDF, render every page, and run visual checks; if that chain cannot complete, return `needs-fix` rather than success.
+- LibreOffice is the preferred PDF converter. WPS/Microsoft Word COM is opt-in only, must have a timeout, and may clean up only Office processes started by the current automation run.
+- Keep these rules scoped to structured experiment and course-design reports. Do not claim support for arbitrary office documents whose template structures have not been analyzed.
 
 ## Writing rules
 
@@ -88,7 +88,10 @@ description: Write Chinese university lab reports and course-design reports, or 
 - For local docx templates, run `scripts/extract-docx-template.ps1` to capture the actual field order before producing a field mapping.
 - For local docx templates that should be machine-filled, run `scripts/generate-docx-field-map.ps1` after the report body is ready, then run `scripts/apply-docx-field-map.ps1`.
 - For local screenshots or experiment photos that should be embedded into the filled docx, prefer `scripts/generate-docx-image-map.ps1` first and then run `scripts/insert-docx-images.ps1` on the already-filled copy.
-- For a cleaner formatted docx copy, optionally run `scripts/format-docx-report-style.ps1` after filling fields and inserting images.
+- For a cleaner normalized copy, optionally run `scripts/format-docx-report-style.ps1` only when the user explicitly wants repository styling or no user template exists.
+- Use `scripts/plan-report-content.ps1` to create a structured content plan before body rendering when materials come from multiple sources.
+- Use `scripts/analyze-docx-template.ps1` and `scripts/validate-docx-format.ps1` for template-contract analysis and post-render fidelity checks.
+- Use `scripts/run-visual-validation.ps1` for strict PDF and per-page preview validation.
 - For chat-driven local execution, prefer `scripts/build-report-from-feishu.ps1` so the wrapper can keep the final deliverable in the output root and move intermediate files into an `artifacts/` subdirectory.
 - The image pipeline can resolve staged relative attachment paths such as `media/inbound/example.png` from OpenClaw-style prompts; when those paths appear in prompt-injected media notes, reuse them directly in `-ImagePaths`.
 - When the template has fixed section headings plus blank paragraphs, prefer block mappings over flattening long body content into a single field.

@@ -37,7 +37,7 @@ When using a real school template outside the repository, include it in the fing
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\check-fast-report-session.ps1 `
-  -TemplatePath "E:\实验报告\00-模板\实验报告模版1.docx","E:\新建文件夹\课程设计-模板.doc"
+  -TemplatePath ".\materials\实验报告模板.docx",".\materials\课程设计模板.docx"
 ```
 
 If one of those templates changes, the helper will recommend a fresh smoke run.

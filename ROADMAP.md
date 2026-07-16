@@ -12,15 +12,15 @@ Its strongest path is narrower and more practical:
 
 The core workflow remains:
 
-The repository can support nearby document types only after the experiment-report path stays fast, stable, and easy to verify.
-
 1. gather references and user inputs
 2. generate or clean the report body
 3. fit content into a local docx template
 4. plan image placement
 5. insert screenshots and captions
-6. apply final styling
-7. validate the output
+6. preserve the template contract or apply an explicitly requested normalization profile
+7. validate structure, layout, format, and—when strict mode is selected—every rendered page
+
+The repository can support nearby document types only after the experiment-report path stays fast, stable, and easy to verify.
 
 That makes this repository best suited to structured Chinese documents that:
 
@@ -30,6 +30,8 @@ That makes this repository best suited to structured Chinese documents that:
 - need a reviewable `docx` result that follows a known template
 
 ## Phase 0: Stabilize The Experiment-Report Pipeline
+
+Status: substantially implemented by the universal report refactor.
 
 Before adding more document types, the current experiment-report flow should become easier to trust, debug, and reuse.
 
@@ -198,7 +200,7 @@ Alongside new profiles, the repository should keep investing in a few shared cap
 - turning the project into a general-purpose office suite
 - pretending every document type can be solved by a single catch-all prompt
 - expanding to unrelated document types before the profile model is stable
-- shipping a GUI before the profile-driven pipeline is mature
+- expanding the Web UI into a general-purpose office suite
 
 ## Practical Success Metric
 
