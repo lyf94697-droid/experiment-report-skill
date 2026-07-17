@@ -153,7 +153,7 @@ function New-RunPropertiesXml {
 
   $boldXml = if ($Bold) { "<w:b/>" } else { "" }
   $font = Escape-XmlText -Text $FontName
-  return "<w:rPr><w:rFonts w:ascii=`"$font`" w:hAnsi=`"$font`" w:eastAsia=`"$font`"/>$boldXml<w:sz w:val=`"$SizeHalfPoints`"/><w:szCs w:val=`"$SizeHalfPoints`"/></w:rPr>"
+  return "<w:rPr><w:rFonts w:ascii=`"$font`" w:hAnsi=`"$font`" w:eastAsia=`"$font`"/>$boldXml<w:color w:val=`"000000`"/><w:sz w:val=`"$SizeHalfPoints`"/><w:szCs w:val=`"$SizeHalfPoints`"/></w:rPr>"
 }
 
 function New-ParagraphXml {
@@ -167,15 +167,19 @@ function New-ParagraphXml {
     [int]$LineTwips = 320,
     [string]$FontName = "宋体",
     [int]$SizeHalfPoints = 21,
+    [string]$StyleId = "",
+    [switch]$KeepNext,
     [switch]$Bold
   )
 
   $indentXml = if ($FirstLineTwips -gt 0) { "<w:ind w:firstLine=`"$FirstLineTwips`"/>" } else { "" }
+  $styleXml = if ([string]::IsNullOrWhiteSpace($StyleId)) { "" } else { "<w:pStyle w:val=`"$(Escape-XmlText -Text $StyleId)`"/>" }
+  $keepNextXml = if ($KeepNext) { "<w:keepNext/>" } else { "" }
   $rPr = New-RunPropertiesXml -FontName $FontName -SizeHalfPoints $SizeHalfPoints -Bold:$Bold
   $safeText = Escape-XmlText -Text $Text
   return @"
 <w:p xmlns:w="$wordNamespace">
-  <w:pPr><w:spacing w:before="$BeforeTwips" w:after="$AfterTwips" w:line="$LineTwips" w:lineRule="auto"/>$indentXml<w:jc w:val="$Justification"/></w:pPr>
+  <w:pPr>$styleXml$keepNextXml<w:spacing w:before="$BeforeTwips" w:after="$AfterTwips" w:line="$LineTwips" w:lineRule="auto"/>$indentXml<w:jc w:val="$Justification"/></w:pPr>
   <w:r>$rPr<w:t xml:space="preserve">$safeText</w:t></w:r>
 </w:p>
 "@
@@ -456,11 +460,11 @@ function New-CourseDesignTablesXml {
   $fieldTableSectionNumber = $StartingSubsectionNumber + 2
 
   $xml = New-Object System.Collections.Generic.List[string]
-  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 功能模块设计" -f $ChapterNumber, $moduleSectionNumber) -FirstLineTwips 420 -BeforeTwips 80 -AfterTwips 0 -LineTwips 320 -FontName "宋体" -SizeHalfPoints 21))
+  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 功能模块设计" -f $ChapterNumber, $moduleSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
   [void]$xml.Add((New-TableBlockXml -Caption ("表{0}-1 功能模块表" -f $ChapterNumber) -Headers @("功能模块", "包含子功能模块", "功能") -Rows @($Profile.modules) -Widths @(1800, 2200, 4600) -MergeFirstColumn))
-  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库设计" -f $ChapterNumber, $databaseSectionNumber) -FirstLineTwips 420 -BeforeTwips 120 -AfterTwips 0 -LineTwips 320 -FontName "宋体" -SizeHalfPoints 21))
+  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库设计" -f $ChapterNumber, $databaseSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
   [void]$xml.Add((New-TableBlockXml -Caption ("表{0}-2 数据库表" -f $ChapterNumber) -Headers @("序号", "数据库表", "数据表存储的内容") -Rows @($Profile.database) -Widths @(900, 2500, 5200)))
-  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库表结构" -f $ChapterNumber, $fieldTableSectionNumber) -FirstLineTwips 420 -BeforeTwips 120 -AfterTwips 0 -LineTwips 320 -FontName "宋体" -SizeHalfPoints 21))
+  [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库表结构" -f $ChapterNumber, $fieldTableSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
 
   $tableNo = 3
   foreach ($fieldTable in @($Profile.fieldTables)) {

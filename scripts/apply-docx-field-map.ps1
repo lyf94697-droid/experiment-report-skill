@@ -22,6 +22,7 @@ $fullWidthColon = [string][char]0xFF1A
 $labelPattern = '^(?<label>[^:\uFF1A]{1,60})[:\uFF1A]\s*(?<rest>.*)$'
 $sectionHeadingPattern = '^(?:(?:\d+|[一二三四五六七八九十])[.\u3001]?\s*)?(?:\u5B9E\u9A8C\u76EE\u7684|\u5B9E\u9A8C\u73AF\u5883|\u5B9E\u9A8C\u8BBE\u5907\u4E0E\u73AF\u5883|\u5B9E\u9A8C\u539F\u7406|\u5B9E\u9A8C\u539F\u7406\u6216\u4EFB\u52A1\u8981\u6C42|\u4EFB\u52A1\u8981\u6C42|\u5B9E\u9A8C\u6B65\u9AA4|\u5B9E\u9A8C\u7ED3\u679C|\u5B9E\u9A8C\u73B0\u8C61\u4E0E\u7ED3\u679C\u8BB0\u5F55|\u7ED3\u679C\u5206\u6790|\u95EE\u9898\u5206\u6790|\u5B9E\u9A8C\u603B\u7ED3|\u603B\u7ED3\u4E0E\u601D\u8003|\u5B9E\u9A8C\u5185\u5BB9|\u5B9E\u9A8C\u8FC7\u7A0B|\u5B9E\u9A8C\u7ED3\u8BBA|\u5B9E\u9A8C\u8981\u6C42|\u5B9E\u9A8C\u5668\u6750|\u5B9E\u9A8C\u4EEA\u5668|\u5B9E\u9A8C\u8BB0\u5F55|\u6CE8\u610F\u4E8B\u9879|\u5B9E\u9A8C\u5C0F\u7ED3)$'
 $choiceMarkerPattern = '[①②③④⑤⑥⑦⑧⑨⑩]'
+$script:availableParagraphStyleIds = $null
 
 function Normalize-OpenXmlText {
   param(
@@ -726,6 +727,58 @@ function Set-ParagraphText {
   Add-TextRunToParagraph -Paragraph $Paragraph -NamespaceManager $NamespaceManager -Text $Text -RunPropertiesTemplate $runPropertiesTemplate
 }
 
+function Apply-RecognizedParagraphRole {
+  param(
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNode]$Paragraph,
+
+    [Parameter(Mandatory = $true)]
+    [System.Xml.XmlNamespaceManager]$NamespaceManager,
+
+    [Parameter(Mandatory = $true)]
+    [string]$Text
+  )
+
+  $normalized = $Text.Trim()
+  $styleId = $null
+  if ($normalized -match '^\d+\.\d+\.\d+\s+\S') {
+    $styleId = "Heading3"
+  } elseif ($normalized -match '^\d+\.\d+\s+\S') {
+    $styleId = "Heading2"
+  }
+
+  if ([string]::IsNullOrWhiteSpace($styleId)) {
+    return
+  }
+  if (($null -ne $script:availableParagraphStyleIds) -and (-not $script:availableParagraphStyleIds.Contains($styleId))) {
+    return
+  }
+
+  $document = $Paragraph.OwnerDocument
+  $namespaceUri = $NamespaceManager.LookupNamespace("w")
+  $paragraphProperties = $Paragraph.SelectSingleNode("./w:pPr", $NamespaceManager)
+  if ($null -eq $paragraphProperties) {
+    $paragraphProperties = $document.CreateElement("w", "pPr", $namespaceUri)
+    $Paragraph.PrependChild($paragraphProperties) | Out-Null
+  }
+
+  foreach ($nodeName in @("pStyle", "spacing", "ind", "jc")) {
+    foreach ($node in @($paragraphProperties.SelectNodes("./w:$nodeName", $NamespaceManager))) {
+      $paragraphProperties.RemoveChild($node) | Out-Null
+    }
+  }
+
+  $styleNode = $document.CreateElement("w", "pStyle", $namespaceUri)
+  $styleAttribute = $document.CreateAttribute("w", "val", $namespaceUri)
+  $styleAttribute.Value = $styleId
+  $styleNode.Attributes.Append($styleAttribute) | Out-Null
+  $paragraphProperties.PrependChild($styleNode) | Out-Null
+
+  foreach ($runProperties in @($Paragraph.SelectNodes("./w:r/w:rPr", $NamespaceManager))) {
+    $runProperties.ParentNode.RemoveChild($runProperties) | Out-Null
+  }
+}
+
 function New-ParagraphLike {
   param(
     [Parameter(Mandatory = $true)]
@@ -740,6 +793,7 @@ function New-ParagraphLike {
 
   $paragraph = $TemplateParagraph.CloneNode($true)
   Set-ParagraphText -Paragraph $paragraph -NamespaceManager $NamespaceManager -Text $Text
+  Apply-RecognizedParagraphRole -Paragraph $paragraph -NamespaceManager $NamespaceManager -Text $Text
   return $paragraph
 }
 
@@ -822,8 +876,9 @@ function Apply-ParagraphBlock {
     [string[]]$Paragraphs
   )
 
-  Set-ParagraphText -Paragraph $TargetParagraph -NamespaceManager $NamespaceManager -Text $Paragraphs[0]
   $templateParagraph = $TargetParagraph.CloneNode($true)
+  Set-ParagraphText -Paragraph $TargetParagraph -NamespaceManager $NamespaceManager -Text $Paragraphs[0]
+  Apply-RecognizedParagraphRole -Paragraph $TargetParagraph -NamespaceManager $NamespaceManager -Text $Paragraphs[0]
   $insertAfter = $TargetParagraph
   $insertedCount = 0
 
@@ -1074,6 +1129,20 @@ New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
 
 try {
   [System.IO.Compression.ZipFile]::ExtractToDirectory($resolvedTemplatePath, $tempRoot)
+
+  $stylesXmlPath = [System.IO.Path]::Combine($tempRoot, "word", "styles.xml")
+  if (Test-Path -LiteralPath $stylesXmlPath) {
+    [xml]$stylesXml = [System.IO.File]::ReadAllText($stylesXmlPath, (New-Object System.Text.UTF8Encoding($false)))
+    $stylesNamespaceManager = New-Object System.Xml.XmlNamespaceManager($stylesXml.NameTable)
+    $stylesNamespaceManager.AddNamespace("w", "http://schemas.openxmlformats.org/wordprocessingml/2006/main")
+    $script:availableParagraphStyleIds = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($styleNode in @($stylesXml.SelectNodes("/w:styles/w:style[@w:type='paragraph']", $stylesNamespaceManager))) {
+      $styleId = $styleNode.GetAttribute("styleId", "http://schemas.openxmlformats.org/wordprocessingml/2006/main")
+      if (-not [string]::IsNullOrWhiteSpace($styleId)) {
+        [void]$script:availableParagraphStyleIds.Add($styleId)
+      }
+    }
+  }
 
   $documentXmlPath = [System.IO.Path]::Combine($tempRoot, "word", "document.xml")
   if (-not (Test-Path -LiteralPath $documentXmlPath)) {

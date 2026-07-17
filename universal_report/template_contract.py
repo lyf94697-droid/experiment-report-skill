@@ -282,17 +282,36 @@ def _paragraph_role_samples(
             or named_heading_pattern.match(item["text"])
         )
     ]
-    heading_candidates.sort(
-        key=lambda item: (
+    def heading_semantic_rank(item: dict[str, Any]) -> tuple[int, int, int, int]:
+        style_name = str(item.get("styleName") or "").casefold()
+        outline_level = item["paragraph"].get("outlineLevel")
+        is_named_or_outline_heading = (
+            outline_level is not None
+            or style_name.startswith("heading")
+            or style_name.startswith("标题")
+        )
+        return (
+            0 if is_named_or_outline_heading else 1,
+            int(outline_level) if outline_level is not None else 9,
             -(item["run"].get("sizeHalfPoints") or 0),
             item["index"],
         )
-    )
+
+    heading_candidates.sort(key=heading_semantic_rank)
     heading1 = heading_candidates[0] if heading_candidates else report_title
     heading2 = heading_candidates[1] if len(heading_candidates) > 1 else heading1
     heading3 = heading_candidates[2] if len(heading_candidates) > 2 else heading2
+    actual_heading_indexes = {
+        item["index"]
+        for item in heading_candidates
+        if item["paragraph"].get("outlineLevel") is not None
+        or str(item.get("styleName") or "").casefold().startswith(("heading", "标题"))
+    }
+    structural_heading_indexes = actual_heading_indexes or {
+        item["index"] for item in heading_candidates
+    }
     first_heading_index = min(
-        (item["index"] for item in heading_candidates),
+        structural_heading_indexes,
         default=len(paragraphs) + 1,
     )
     first_table_paragraph_indexes = [
@@ -327,7 +346,7 @@ def _paragraph_role_samples(
             None,
         )
 
-    heading_indexes = {item["index"] for item in heading_candidates}
+    heading_indexes = structural_heading_indexes
     blank_body = next(
         (
             item
@@ -335,14 +354,16 @@ def _paragraph_role_samples(
             if not item["text"]
             and not item["inTable"]
             and item["index"] - 1 in heading_indexes
+            and item["paragraph"].get("alignment") in (None, "left", "both")
+            and not item["paragraph"].get("keepWithNext")
         ),
         None,
     )
     body = (
-        body_candidate(
+        blank_body
+        or body_candidate(
             after_index=last_table_paragraph_index, in_table=False, meaningful=True
         )
-        or blank_body
         or body_candidate(
             after_index=last_table_paragraph_index, in_table=False, meaningful=False
         )

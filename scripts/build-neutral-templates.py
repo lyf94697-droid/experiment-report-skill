@@ -14,8 +14,8 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt, RGBColor
 
 
-INK = "202A35"
-MUTED = "5E6B78"
+INK = "000000"
+MUTED = "666666"
 BLUE = "285B7A"
 TEAL = "176B6D"
 LIGHT_BLUE = "EAF1F5"
@@ -198,6 +198,7 @@ def add_page_number(paragraph, *, color: str = MUTED) -> None:
     end = OxmlElement("w:fldChar")
     end.set(qn("w:fldCharType"), "end")
     run = paragraph.add_run()
+    set_run_font(run, east_asia="宋体", ascii_font="Times New Roman", size=9, color=color)
     run._r.extend((begin, instruction, separate, value, end))
     suffix = paragraph.add_run(" 页")
     set_run_font(suffix, east_asia="宋体", size=9, color=color)
@@ -231,14 +232,14 @@ def configure_document(
         color=INK,
     )
     normal.paragraph_format.space_before = Pt(0)
-    normal.paragraph_format.space_after = Pt(6)
+    normal.paragraph_format.space_after = Pt(0)
     normal.paragraph_format.line_spacing_rule = WD_LINE_SPACING.ONE_POINT_FIVE
     normal.paragraph_format.first_line_indent = Pt(body_size * 2)
 
     for name, size, before, after in (
-        ("Heading 1", 14, 12, 6),
-        ("Heading 2", 12.5, 10, 5),
-        ("Heading 3", 12, 8, 4),
+        ("Heading 1", 15, 12, 6),
+        ("Heading 2", 12, 8, 4),
+        ("Heading 3", 11, 6, 3),
     ):
         style = doc.styles[name]
         set_style_font(
@@ -253,6 +254,20 @@ def configure_document(
         style.paragraph_format.space_after = Pt(after)
         style.paragraph_format.keep_with_next = True
         style.paragraph_format.first_line_indent = Pt(0)
+
+    caption = doc.styles["Caption"]
+    set_style_font(
+        caption,
+        east_asia="宋体",
+        ascii_font="Times New Roman",
+        size=10.5,
+        color=INK,
+    )
+    caption.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    caption.paragraph_format.first_line_indent = Pt(0)
+    caption.paragraph_format.space_before = Pt(3)
+    caption.paragraph_format.space_after = Pt(6)
+    caption.paragraph_format.keep_together = True
 
     properties = doc.core_properties
     properties.title = "中性实验报告模板"
@@ -290,8 +305,8 @@ def add_title(
         run = sub.add_run(subtitle)
         set_run_font(
             run,
-            east_asia="微软雅黑",
-            ascii_font="Arial",
+            east_asia="宋体",
+            ascii_font="Times New Roman",
             size=9.5,
             bold=False,
             color=subtitle_color,
@@ -358,7 +373,7 @@ def add_sections(
             paragraph.paragraph_format.first_line_indent = Pt(body_size * 2)
             paragraph.paragraph_format.keep_together = True
             run = paragraph.add_run()
-            set_run_font(run, east_asia=body_font, size=body_size, color="777777")
+            set_run_font(run, east_asia=body_font, size=body_size, color=INK)
 
 
 def add_quiet_header_footer(doc: Document, label: str, *, color: str = MUTED) -> None:
@@ -374,7 +389,7 @@ def add_quiet_header_footer(doc: Document, label: str, *, color: str = MUTED) ->
             paragraph.alignment = WD_ALIGN_PARAGRAPH.RIGHT
             paragraph.paragraph_format.first_line_indent = Pt(0)
             run = paragraph.add_run(label)
-            set_run_font(run, east_asia="微软雅黑", ascii_font="Arial", size=8.5, color=color)
+            set_run_font(run, east_asia="宋体", ascii_font="Times New Roman", size=9, color=color)
 
         footer = section.footer
         footer_key = id(footer._element)
@@ -404,7 +419,7 @@ def build_classic(path: Path) -> None:
         heading_font="黑体",
         heading_color="000000",
     )
-    add_title(doc, "实验报告", font="宋体", size=22)
+    add_title(doc, "实验报告", font="黑体", size=22)
     add_metadata_table(
         doc,
         rows=metadata_rows(),
@@ -474,26 +489,26 @@ def build_engineering(path: Path) -> None:
         doc,
         body_font="宋体",
         body_size=11.5,
-        heading_font="微软雅黑",
-        heading_color=BLUE,
+        heading_font="黑体",
+        heading_color=INK,
         margins_cm=(2.0, 2.0, 2.1, 2.2),
     )
     add_title(
         doc,
         "工程技术实验报告",
-        font="微软雅黑",
+        font="黑体",
         size=21,
-        color=BLUE,
+        color=INK,
         subtitle="TECHNICAL LAB REPORT",
     )
     add_metadata_table(
         doc,
         rows=metadata_rows(),
         widths_twips=[1500, 3300, 1500, 3300],
-        label_font="微软雅黑",
+        label_font="黑体",
         value_font="宋体",
-        label_fill=LIGHT_BLUE,
-        border_color="8AA2B2",
+        label_fill=LIGHT_GRAY,
+        border_color="707070",
     )
     add_sections(
         doc,
@@ -527,11 +542,11 @@ def build_engineering(path: Path) -> None:
         east_asia="宋体",
         ascii_font="Times New Roman",
         size=10,
-        color=MUTED,
+        color=INK,
     )
     caption_style.paragraph_format.first_line_indent = Pt(0)
     caption_style.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    add_quiet_header_footer(doc, "工程技术实验报告", color=BLUE)
+    add_quiet_header_footer(doc, "工程技术实验报告", color=MUTED)
     doc.save(path)
 
 

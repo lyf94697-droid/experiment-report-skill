@@ -1118,10 +1118,11 @@ function New-CaptionParagraph {
   $paragraphXml = @"
 <w:p xmlns:w="$wordNamespace">
   <w:pPr>
+    <w:pStyle w:val="Caption"/>
     <w:keepLines/>
     <w:jc w:val="center"/>
     <w:ind w:left="0" w:right="0" w:firstLine="0"/>
-    <w:spacing w:before="0" w:after="80"/>
+    <w:spacing w:before="60" w:after="120"/>
   </w:pPr>
   <w:r>
     <w:t>$escapedCaption</w:t>

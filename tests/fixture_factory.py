@@ -98,6 +98,7 @@ def make_template(
     include_metadata_table: bool = True,
     empty_body: bool = False,
     body_table_after: bool = False,
+    misleading_cover_lines: bool = False,
 ) -> Path:
     columns = [1800, 3000, 1800, 4200] if columns is None else columns
     title_text = "" if blank else "信息学院实验报告"
@@ -167,6 +168,12 @@ def make_template(
         if body_table_after
         else ""
     )
+    cover_lines_xml = (
+        """<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>COURSE DESIGN REPORT TEMPLATE</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>课题名称：</w:t></w:r></w:p>"""
+        if misleading_cover_lines
+        else ""
+    )
     section_xml = []
     for index in range(sections):
         title_page = "<w:titlePg/>" if index == 0 and sections > 1 else ""
@@ -187,6 +194,7 @@ def make_template(
       <w:pPr><w:pStyle w:val="ReportTitle"/></w:pPr>
       <w:r><w:t>{title_text}</w:t></w:r>
     </w:p>
+    {cover_lines_xml}
     {metadata_table_xml}
     <w:p><w:pPr><w:pStyle w:val="HeadingOne"/></w:pPr><w:r><w:t>实验目的</w:t></w:r></w:p>
     {body_paragraph}

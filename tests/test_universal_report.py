@@ -86,6 +86,25 @@ class TemplateContractTests(unittest.TestCase):
             self.assertEqual(body["lineSpacing"]["line"], 320)
             self.assertEqual(body["indent"]["firstLine"], 460)
 
+    def test_contract_does_not_treat_cover_subtitle_as_body_or_heading(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            template = make_template(
+                Path(temp_dir) / "course-cover.docx",
+                body_font="宋体",
+                body_size=24,
+                body_line=360,
+                first_line=480,
+                empty_body=True,
+                misleading_cover_lines=True,
+            )
+
+            contract = analyze_template(template)
+            roles = contract["styles"]["roles"]
+
+            self.assertEqual(roles["heading1"]["source"]["sampleText"], "实验目的")
+            self.assertEqual(roles["body"]["source"]["sampleText"], "")
+            self.assertEqual(roles["body"]["font"]["eastAsia"], "宋体")
+
     def test_contract_ignores_body_tables_when_sampling_body_style(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             template = make_template(
