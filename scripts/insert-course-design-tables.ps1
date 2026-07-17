@@ -147,13 +147,15 @@ function Get-NextSubsectionNumber {
 function New-RunPropertiesXml {
   param(
     [string]$FontName = "宋体",
+    [string]$AsciiFontName = "Times New Roman",
     [int]$SizeHalfPoints = 21,
     [switch]$Bold
   )
 
   $boldXml = if ($Bold) { "<w:b/>" } else { "" }
-  $font = Escape-XmlText -Text $FontName
-  return "<w:rPr><w:rFonts w:ascii=`"$font`" w:hAnsi=`"$font`" w:eastAsia=`"$font`"/>$boldXml<w:color w:val=`"000000`"/><w:sz w:val=`"$SizeHalfPoints`"/><w:szCs w:val=`"$SizeHalfPoints`"/></w:rPr>"
+  $eastAsiaFont = Escape-XmlText -Text $FontName
+  $asciiFont = Escape-XmlText -Text $AsciiFontName
+  return "<w:rPr><w:rFonts w:ascii=`"$asciiFont`" w:hAnsi=`"$asciiFont`" w:eastAsia=`"$eastAsiaFont`" w:cs=`"$asciiFont`"/>$boldXml<w:color w:val=`"000000`"/><w:sz w:val=`"$SizeHalfPoints`"/><w:szCs w:val=`"$SizeHalfPoints`"/></w:rPr>"
 }
 
 function New-ParagraphXml {
@@ -166,20 +168,23 @@ function New-ParagraphXml {
     [int]$AfterTwips = 0,
     [int]$LineTwips = 320,
     [string]$FontName = "宋体",
+    [string]$AsciiFontName = "Times New Roman",
     [int]$SizeHalfPoints = 21,
     [string]$StyleId = "",
     [switch]$KeepNext,
+    [switch]$NoWordWrap,
     [switch]$Bold
   )
 
   $indentXml = if ($FirstLineTwips -gt 0) { "<w:ind w:firstLine=`"$FirstLineTwips`"/>" } else { "" }
   $styleXml = if ([string]::IsNullOrWhiteSpace($StyleId)) { "" } else { "<w:pStyle w:val=`"$(Escape-XmlText -Text $StyleId)`"/>" }
   $keepNextXml = if ($KeepNext) { "<w:keepNext/>" } else { "" }
-  $rPr = New-RunPropertiesXml -FontName $FontName -SizeHalfPoints $SizeHalfPoints -Bold:$Bold
+  $wordWrapXml = if ($NoWordWrap) { '<w:wordWrap w:val="0"/>' } else { "" }
+  $rPr = New-RunPropertiesXml -FontName $FontName -AsciiFontName $AsciiFontName -SizeHalfPoints $SizeHalfPoints -Bold:$Bold
   $safeText = Escape-XmlText -Text $Text
   return @"
 <w:p xmlns:w="$wordNamespace">
-  <w:pPr>$styleXml$keepNextXml<w:spacing w:before="$BeforeTwips" w:after="$AfterTwips" w:line="$LineTwips" w:lineRule="auto"/>$indentXml<w:jc w:val="$Justification"/></w:pPr>
+  <w:pPr>$styleXml$keepNextXml$wordWrapXml<w:spacing w:before="$BeforeTwips" w:after="$AfterTwips" w:line="$LineTwips" w:lineRule="auto"/>$indentXml<w:jc w:val="$Justification"/></w:pPr>
   <w:r>$rPr<w:t xml:space="preserve">$safeText</w:t></w:r>
 </w:p>
 "@
@@ -195,12 +200,14 @@ function New-CellXml {
   )
 
   $mergeXml = if ([string]::IsNullOrWhiteSpace($VMerge)) { "" } else { "<w:vMerge w:val=`"$VMerge`"/>" }
-  $fontSize = if ($Header) { 21 } else { 20 }
-  $paragraph = New-ParagraphXml -Text $Text -Justification $Justification -LineTwips 280 -FontName "宋体" -SizeHalfPoints $fontSize -Bold:$Header
+  $fontSize = if ($Header) { 20 } else { 19 }
+  $fontName = if ($Header) { "黑体" } else { "宋体" }
+  $headerCellXml = if ($Header) { '<w:noWrap/><w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>' } else { "" }
+  $paragraph = New-ParagraphXml -Text $Text -Justification $Justification -BeforeTwips 0 -AfterTwips 0 -LineTwips 250 -FontName $fontName -AsciiFontName "Times New Roman" -SizeHalfPoints $fontSize -KeepNext:$Header -NoWordWrap -Bold:$Header
   $innerParagraph = $paragraph -replace '^<w:p xmlns:w="[^"]+">', '<w:p>' -replace '</w:p>\s*$', '</w:p>'
   return @"
 <w:tc>
-  <w:tcPr><w:tcW w:w="$WidthTwips" w:type="dxa"/>$mergeXml<w:vAlign w:val="center"/><w:tcMar><w:top w:w="60" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tcMar></w:tcPr>
+  <w:tcPr><w:tcW w:w="$WidthTwips" w:type="dxa"/>$mergeXml$headerCellXml<w:vAlign w:val="center"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tcMar></w:tcPr>
   $innerParagraph
 </w:tc>
 "@
@@ -220,6 +227,7 @@ function New-TableXml {
     [switch]$MergeFirstColumn
   )
 
+  $totalWidth = ($Widths | Measure-Object -Sum).Sum
   $gridXml = ($Widths | ForEach-Object { "<w:gridCol w:w=`"$_`"/>" }) -join ""
   $rowXml = New-Object System.Collections.Generic.List[string]
 
@@ -227,7 +235,7 @@ function New-TableXml {
   for ($i = 0; $i -lt $Headers.Count; $i++) {
     [void]$headerCells.Add((New-CellXml -Text $Headers[$i] -WidthTwips $Widths[$i] -Header))
   }
-  [void]$rowXml.Add("<w:tr><w:trPr><w:cantSplit/></w:trPr>$($headerCells -join '')</w:tr>")
+  [void]$rowXml.Add("<w:tr><w:trPr><w:tblHeader/><w:cantSplit/><w:trHeight w:val=`"560`" w:hRule=`"atLeast`"/></w:trPr>$($headerCells -join '')</w:tr>")
 
   $previousFirstColumn = $null
   foreach ($row in $Rows) {
@@ -246,26 +254,27 @@ function New-TableXml {
         }
       }
 
-      $justification = if ($i -eq ($Headers.Count - 1) -and $Headers.Count -gt 3) { "left" } elseif ($i -eq 2 -and $Headers.Count -eq 3) { "left" } else { "center" }
+      $justification = if ($i -eq 2 -and $Headers.Count -eq 3) { "left" } else { "center" }
       [void]$cells.Add((New-CellXml -Text $value -WidthTwips $Widths[$i] -VMerge $vMerge -Justification $justification))
     }
-    [void]$rowXml.Add("<w:tr><w:trPr><w:cantSplit/></w:trPr>$($cells -join '')</w:tr>")
+    [void]$rowXml.Add("<w:tr><w:trPr><w:cantSplit/><w:trHeight w:val=`"500`" w:hRule=`"atLeast`"/></w:trPr>$($cells -join '')</w:tr>")
   }
 
   return @"
 <w:tbl xmlns:w="$wordNamespace">
   <w:tblPr>
-    <w:tblW w:w="0" w:type="auto"/>
+    <w:tblW w:w="$totalWidth" w:type="dxa"/>
     <w:jc w:val="center"/>
+    <w:tblLayout w:type="fixed"/>
     <w:tblBorders>
-      <w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-      <w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-      <w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/>
-      <w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/>
+      <w:top w:val="single" w:sz="6" w:space="0" w:color="000000"/>
+      <w:left w:val="single" w:sz="6" w:space="0" w:color="000000"/>
+      <w:bottom w:val="single" w:sz="6" w:space="0" w:color="000000"/>
+      <w:right w:val="single" w:sz="6" w:space="0" w:color="000000"/>
       <w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/>
       <w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/>
     </w:tblBorders>
-    <w:tblCellMar><w:top w:w="60" w:type="dxa"/><w:left w:w="80" w:type="dxa"/><w:bottom w:w="60" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar>
+    <w:tblCellMar><w:top w:w="80" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar>
   </w:tblPr>
   <w:tblGrid>$gridXml</w:tblGrid>
   $($rowXml -join "`n")
@@ -290,7 +299,7 @@ function New-TableBlockXml {
     [switch]$MergeFirstColumn
   )
 
-  return (New-ParagraphXml -Text $Caption -Justification center -BeforeTwips 100 -AfterTwips 40 -LineTwips 280 -FontName "宋体" -SizeHalfPoints 21) +
+  return (New-ParagraphXml -Text $Caption -Justification center -BeforeTwips 100 -AfterTwips 40 -LineTwips 280 -FontName "宋体" -AsciiFontName "Times New Roman" -SizeHalfPoints 21 -KeepNext) +
     (New-TableXml -Headers $Headers -Rows $Rows -Widths $Widths -MergeFirstColumn:$MergeFirstColumn)
 }
 
@@ -333,8 +342,8 @@ function Get-CourseDesignTableProfile {
           @("1","score_id","integer not null","成绩记录编号","主键"),
           @("2","student_id","varchar(20) not null","学生学号","外键"),
           @("3","course_id","varchar(20) not null","课程编号","外键"),
-          @("4","usual_score","decimal(5,2) not null","平时成绩","0 至 100"),
-          @("5","final_score","decimal(5,2) not null","期末成绩","0 至 100"),
+          @("4","usual_score","decimal(5,2) not null","平时成绩","0～100"),
+          @("5","final_score","decimal(5,2) not null","期末成绩","0～100"),
           @("6","total_score","decimal(5,2) not null","总评成绩","自动计算"),
           @("7","updated_at","datetime not null","最后更新时间",""),
           @("8","operator_id","varchar(20)","操作用户编号","外键")
@@ -463,13 +472,13 @@ function New-CourseDesignTablesXml {
   [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 功能模块设计" -f $ChapterNumber, $moduleSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
   [void]$xml.Add((New-TableBlockXml -Caption ("表{0}-1 功能模块表" -f $ChapterNumber) -Headers @("功能模块", "包含子功能模块", "功能") -Rows @($Profile.modules) -Widths @(1800, 2200, 4600) -MergeFirstColumn))
   [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库设计" -f $ChapterNumber, $databaseSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
-  [void]$xml.Add((New-TableBlockXml -Caption ("表{0}-2 数据库表" -f $ChapterNumber) -Headers @("序号", "数据库表", "数据表存储的内容") -Rows @($Profile.database) -Widths @(900, 2500, 5200)))
+  [void]$xml.Add((New-TableBlockXml -Caption ("表{0}-2 数据库表" -f $ChapterNumber) -Headers @("序号", "数据库表", "数据表存储的内容") -Rows @($Profile.database) -Widths @(1200, 2300, 5100)))
   [void]$xml.Add((New-ParagraphXml -Text ("{0}.{1} 数据库表结构" -f $ChapterNumber, $fieldTableSectionNumber) -BeforeTwips 160 -AfterTwips 80 -LineTwips 320 -FontName "黑体" -SizeHalfPoints 24 -StyleId "Heading2" -KeepNext -Bold))
 
   $tableNo = 3
   foreach ($fieldTable in @($Profile.fieldTables)) {
     $caption = "表{0}-{1} {2}" -f $ChapterNumber, $tableNo, [string]$fieldTable.name
-    [void]$xml.Add((New-TableBlockXml -Caption $caption -Headers @("序号", "字段名", "字段类型", "说明", "备注") -Rows @($fieldTable.rows) -Widths @(800, 1500, 2500, 2200, 1200)))
+    [void]$xml.Add((New-TableBlockXml -Caption $caption -Headers @("序号", "字段名", "字段类型", "说明", "备注") -Rows @($fieldTable.rows) -Widths @(1200, 2100, 2300, 1600, 1400)))
     $tableNo++
   }
 

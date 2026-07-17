@@ -1482,6 +1482,29 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
     [xml]$courseDesignTablesDocumentXml = [System.IO.File]::ReadAllText((Join-Path $courseDesignTablesInspect 'word\document.xml'), (New-Object System.Text.UTF8Encoding($false)))
     Assert-True -Condition ($courseDesignTablesDocumentXml.OuterXml -match '表\d+-1 功能模块表') -Message 'Course-design build-report tables docx is missing the chapter-aware module table caption.'
     Assert-True -Condition ($courseDesignTablesDocumentXml.OuterXml -match '\d+\.\d+\s*功能模块设计') -Message 'Course-design build-report tables docx is missing the chapter-aware subsection heading.'
+    $courseDesignTableNamespace = New-Object System.Xml.XmlNamespaceManager($courseDesignTablesDocumentXml.NameTable)
+    [void]$courseDesignTableNamespace.AddNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main')
+    $fixedCourseDesignTables = @($courseDesignTablesDocumentXml.SelectNodes('//w:tbl[w:tblPr/w:tblW[@w:w="8600" and @w:type="dxa"] and w:tblPr/w:tblLayout[@w:type="fixed"]]', $courseDesignTableNamespace))
+    Assert-True -Condition ($fixedCourseDesignTables.Count -ge 4) -Message 'Course-design generated tables must use the shared 8600-DXA fixed geometry.'
+    $courseDesignFieldTables = @($courseDesignTablesDocumentXml.SelectNodes('//w:tbl[w:tr[1][count(w:tc)=5]]', $courseDesignTableNamespace))
+    Assert-True -Condition ($courseDesignFieldTables.Count -ge 2) -Message 'Course-design build-report should contain generated five-column field tables.'
+    foreach ($fieldTable in $courseDesignFieldTables) {
+      $gridWidth = 0
+      foreach ($gridColumn in @($fieldTable.SelectNodes('w:tblGrid/w:gridCol', $courseDesignTableNamespace))) {
+        $gridWidth += [int]$gridColumn.GetAttribute('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main')
+      }
+      Assert-True -Condition ($gridWidth -eq 8600) -Message 'Course-design field-table grid widths must sum to 8600 DXA.'
+      $cells = @($fieldTable.SelectNodes('.//w:tc', $courseDesignTableNamespace))
+      $centeredCells = @($fieldTable.SelectNodes('.//w:tc[w:tcPr/w:vAlign[@w:val="center"]]', $courseDesignTableNamespace))
+      Assert-True -Condition ($centeredCells.Count -eq $cells.Count) -Message 'Course-design field-table cells must be vertically centered.'
+      $paragraphs = @($fieldTable.SelectNodes('.//w:tc/w:p', $courseDesignTableNamespace))
+      $centeredParagraphs = @($fieldTable.SelectNodes('.//w:tc/w:p[w:pPr/w:jc[@w:val="center"]]', $courseDesignTableNamespace))
+      Assert-True -Condition ($centeredParagraphs.Count -eq $paragraphs.Count) -Message 'Course-design field-table text must be horizontally centered.'
+      $headerShading = @($fieldTable.SelectNodes('w:tr[1]/w:tc/w:tcPr/w:shd[@w:fill="F2F2F2"]', $courseDesignTableNamespace))
+      Assert-True -Condition ($headerShading.Count -eq 5) -Message 'Course-design field-table headers must use the neutral gray header fill.'
+    }
+    $tableFontMappings = @($courseDesignFieldTables[0].SelectNodes('.//w:rPr/w:rFonts[@w:ascii="Times New Roman" and (@w:eastAsia="宋体" or @w:eastAsia="黑体")]', $courseDesignTableNamespace))
+    Assert-True -Condition ($tableFontMappings.Count -gt 0) -Message 'Course-design field tables must map Latin text to Times New Roman and Chinese text to the formal Chinese fonts.'
     Remove-Item -LiteralPath $courseDesignTablesInspect -Recurse -Force
     Assert-True -Condition (Test-Path -LiteralPath ([string]$courseDesignBuildSummary.styledDocxPath)) -Message 'Course-design build-report summary is missing the styled docx path.'
     $courseDesignStyledOutline = & (Join-Path $repoRoot 'scripts\extract-docx-template.ps1') -Path ([string]$courseDesignBuildSummary.styledDocxPath) -Format markdown | Out-String
