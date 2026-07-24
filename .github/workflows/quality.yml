@@ -27,9 +27,15 @@ jobs:
           python-version: "3.11"
 
       - name: Install test dependencies
-        shell: ${{ matrix.shell_name }}
+        shell: pwsh
         run: python -m pip install --disable-pip-version-check "Pillow>=10.0"
 
-      - name: Run smoke tests
-        shell: ${{ matrix.shell_name }}
+      - name: Run smoke tests with Windows PowerShell
+        if: matrix.shell_name == 'powershell'
+        shell: powershell
+        run: .\scripts\run-smoke-tests.ps1
+
+      - name: Run smoke tests with PowerShell 7
+        if: matrix.shell_name == 'pwsh'
+        shell: pwsh
         run: .\scripts\run-smoke-tests.ps1
