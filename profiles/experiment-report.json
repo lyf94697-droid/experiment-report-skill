@@ -10,13 +10,17 @@
     { "key": "TeacherName", "label": "指导教师" },
     { "key": "CourseName", "label": "课程名称" },
     { "key": "ExperimentName", "label": "实验名称" },
-    { "key": "ExperimentProperty", "label": "实验性质" },
-    { "key": "ExperimentDate", "label": "实验时间" },
-    { "key": "ExperimentLocation", "label": "实验地点" }
+    { "key": "ExperimentProperty", "label": "实验性质", "aliases": ["实验类型", "实验类别"] },
+    { "key": "ExperimentDate", "label": "实验时间", "aliases": ["实验日期", "日期", "完成日期"] },
+    { "key": "ExperimentLocation", "label": "实验地点", "aliases": ["地点", "实验室", "实验场地"] }
   ],
   "extraLabels": [
     { "key": "Date", "label": "日期" },
-    { "key": "FinalEdition", "label": "最终版" }
+    { "key": "FinalEdition", "label": "最终版" },
+    { "key": "ExperimentNumber", "label": "实验序号", "aliases": ["实验编号", "项目序号"] },
+    { "key": "Grade", "label": "成绩", "aliases": ["评分"] },
+    { "key": "TeacherComment", "label": "教师评语", "aliases": ["指导教师评语", "评阅意见"] },
+    { "key": "TeacherSignature", "label": "签名与日期", "aliases": ["教师签名", "批阅日期"] }
   ],
   "sectionFields": [
     {

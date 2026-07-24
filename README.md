@@ -62,17 +62,22 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 - 生成后用 `format-validation.json` 对照模板契约逐项验证；
 - 只有显式传入 `-TemplateStyleMode normalize -StyleFinalDocx` 时，才应用仓库样式 profile。
 
-如果用户要 DOCX 但尚未说明模板，Skill 会先问一次是否有老师、学校或自己认可的优秀模板。用户上传的模板始终优先；明确没有模板时，再从五套不含学校标识的内置模板中选择：
+如果用户要 DOCX 但尚未说明模板，Skill 会先问一次是否有老师、学校或自己认可的优秀模板。用户上传的模板始终优先；明确没有模板时，再从十套不含学校标识的内置模板中选择：
 
 | ID | 风格 | 适用场景 |
 | --- | --- | --- |
 | `neutral-classic-lab` | 经典实验报告 | 普通课程实验默认选择 |
 | `neutral-bordered-lab` | 闭合外框 | 强调传统纸质版式或页面外框 |
-| `neutral-engineering-lab` | 工程技术 | 计算机网络、操作系统、数据库、Java、Web、Android 等 |
+| `neutral-engineering-lab` | 工程技术 | 计算机网络、操作系统、数据库、Web、Android、软件工程等 |
 | `neutral-course-design` | 课程设计 | 课程设计、综合实验和项目报告 |
 | `neutral-modern-minimal` | 现代简洁 | 不要求传统表格式的轻量报告 |
+| `neutral-compact-header-lab` | 紧凑信息条 | 周实验、短实验和快速记录 |
+| `neutral-review-panel-lab` | 评阅记录 | 需要成绩、教师评语和签名归档 |
+| `neutral-code-notebook-lab` | 程序设计 | C/C++、Python、Java、算法、测试和调试记录 |
+| `neutral-data-analysis-lab` | 数据分析 | 测量、统计、原始数据、趋势与误差分析 |
+| `neutral-project-dossier` | 项目技术 | 长篇系统设计、完整课程项目和参考文献型报告 |
 
-五份 DOCX 都由仓库脚本从零生成，不包含真实学校名、校徽、示例学生身份或第三方图片。公开模板只作为设计原则参考，来源和使用边界记录在 `examples/report-templates/catalog.json`。
+十份 DOCX 都由仓库脚本从零生成，不包含真实学校名、校徽、示例学生身份或第三方图片。公开模板只作为设计原则参考，来源和使用边界记录在 `examples/report-templates/catalog.json` 和 `docs/template-research.md`。
 
 图片默认一图一行、图注在下。系统会按内容哈希去重，记录选择和拒绝原因；传入 `-RequestedImageCount` 时会严格满足数量，不会复制图片凑数。
 
@@ -294,7 +299,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1 
 | 输入 | 说明 | 示例 |
 | --- | --- | --- |
 | `TemplatePath` | 用户上传的学校或教师模板，优先级最高 | `materials/teacher-template.docx` |
-| `BuiltInTemplateId` | 无用户模板时选择五套中性模板之一 | `neutral-engineering-lab` |
+| `BuiltInTemplateId` | 无用户模板时选择十套中性模板之一 | `neutral-engineering-lab` |
 | `ReportPath` | 已有报告正文 | `examples/sample-report.txt` |
 | `MetadataPath` | 姓名、学号、课程名、实验名等短字段 | `examples/cases/network-dos/metadata.json` |
 | `RequirementsPath` | 章节、关键词和禁用词检查 | `examples/cases/network-dos/requirements.json` |
@@ -381,6 +386,7 @@ experiment-report-skill/
 
 - [docs/README.md](docs/README.md)：文档总导航
 - [docs/architecture.md](docs/architecture.md)：分阶段流水线、模板契约和验证架构
+- [docs/template-research.md](docs/template-research.md)：高校与 GitHub 常见模板调研、采用边界和十套覆盖关系
 - [docs/compatibility.md](docs/compatibility.md)：平台、依赖、跨机器配置和模板边界
 - [docs/troubleshooting.md](docs/troubleshooting.md)：严格模式、格式漂移、图片数量和 Office 转换排障
 - [docs/usage-flow.md](docs/usage-flow.md)：完整使用流程
@@ -418,6 +424,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run-smoke-tests.ps1
 python -m unittest discover -s tests -v
 powershell -ExecutionPolicy Bypass -File .\tests\run-core-smoke.ps1
 powershell -ExecutionPolicy Bypass -File .\tests\run-universal-e2e.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\run-neutral-template-catalog.ps1
+powershell -ExecutionPolicy Bypass -File .\tests\run-template-fidelity-corpus.ps1
 ```
 
 可选 OpenClaw 智能通道检查：
@@ -436,7 +444,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\self-check.ps1
 
 仓库包含 Gradio 界面，支持学生信息、课程与实验名称、正文长度、参考链接、对话材料、DOCX/DOC 模板、截图和代码文件。上传模板默认走保真模式，界面会展示阶段进度、模板契约、图片清单、格式检查、视觉检查和质量建议。
 
-界面提供“无上传模板时使用”选项，可自动推荐或手工选择五套中性模板。只要上传了用户模板，该选择就会被忽略。
+界面提供“无上传模板时使用”选项，可自动推荐或手工选择十套中性模板。只要上传了用户模板，该选择就会被忽略。
 
 默认工作目录是仓库下的 `outputs/web-ui/`，不会绑定某个盘符。可通过环境变量或 JSON 配置覆盖：
 

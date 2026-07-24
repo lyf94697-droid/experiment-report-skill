@@ -596,6 +596,7 @@ try {
       (Join-Path $repoRoot 'scripts\validate-docx-format.ps1'),
       (Join-Path $repoRoot 'scripts\validate-report-draft.ps1'),
       (Join-Path $repoRoot 'tests\run-core-smoke.ps1'),
+      (Join-Path $repoRoot 'tests\run-template-fidelity-corpus.ps1'),
       (Join-Path $repoRoot 'tests\run-universal-e2e.ps1'),
       (Join-Path $repoRoot 'tests\test_universal_report.py'),
       (Join-Path $repoRoot 'universal_report\__init__.py'),
@@ -2419,6 +2420,15 @@ Web 服务器通过 HTTP 端口监听客户端请求，并根据站点绑定和�
   Assert-True -Condition ((@($universalE2eSummary.cases | Where-Object { $_.generationStatus -eq 'completed' })).Count -eq 5) -Message 'A universal end-to-end fast-mode scenario did not complete.'
   Assert-True -Condition ([string]$universalE2eSummary.strictMode.generationStatus -eq 'needs-fix') -Message 'Strict-mode dependency failure should remain structured as needs-fix.'
   $results.Add('universal-report end-to-end scenarios OK') | Out-Null
+
+  $templateFidelityOutputDir = Join-Path $tempRoot 'template-fidelity-corpus'
+  & (Join-Path $repoRoot 'tests\run-template-fidelity-corpus.ps1') -OutputDir $templateFidelityOutputDir | Out-Null
+  $templateFidelitySummaryPath = Join-Path $templateFidelityOutputDir 'template-fidelity-summary.json'
+  Assert-True -Condition (Test-Path -LiteralPath $templateFidelitySummaryPath) -Message 'Template fidelity corpus did not create template-fidelity-summary.json.'
+  $templateFidelitySummary = (Get-Content -LiteralPath $templateFidelitySummaryPath -Raw -Encoding UTF8) | ConvertFrom-Json
+  Assert-True -Condition ([int]$templateFidelitySummary.caseCount -eq 5 -and @($templateFidelitySummary.cases).Count -eq 5) -Message 'Template fidelity corpus did not run all five structural template families.'
+  Assert-True -Condition ((@($templateFidelitySummary.cases | Where-Object { $_.templateSelectionSource -eq 'user' -and $_.templateStylePreserved -and $_.formatValidationPassed })).Count -eq 5) -Message 'An uploaded-template fidelity scenario failed.'
+  $results.Add('uploaded-template fidelity corpus OK') | Out-Null
 
   $resolvedOpenClaw = $null
   if (-not [string]::IsNullOrWhiteSpace($OpenClawCmd)) {

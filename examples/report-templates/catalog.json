@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "catalogName": "experiment-report-neutral-templates",
-  "templateQuestion": "你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？有的话请上传，我会优先保持原格式；没有的话，我会从五套不含学校标识的内置模板中选择。",
+  "templateQuestion": "你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？有的话请上传，我会优先保持原格式；没有的话，我会从十套不含学校标识的内置模板中选择。",
   "defaults": {
     "experiment-report": "neutral-classic-lab",
     "course-design-report": "neutral-course-design"
@@ -63,7 +63,7 @@
       "aliases": ["工程", "计算机", "技术实验"],
       "file": "neutral-engineering-lab.docx",
       "reportTypes": ["experiment-report"],
-      "description": "蓝灰技术层级、代码与图注样式齐全，适合计算机网络、操作系统、数据库、Java、Web 和 Android 实验。",
+      "description": "蓝灰技术层级、配置与图注样式齐全，适合计算机网络、操作系统、数据库、Web、Android 和软件工程实验。",
       "origin": "original-neutral-reconstruction",
       "license": "MIT",
       "thirdPartyAssets": false,
@@ -117,6 +117,115 @@
         {
           "url": "https://github.com/Shincey/ChineseLatexTemplate",
           "incorporation": "仅参考通用中文报告的字体与章节可配置思想。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-compact-header-lab",
+      "displayName": "紧凑信息条实验报告",
+      "aliases": ["紧凑", "信息条", "周实验", "快速记录"],
+      "file": "neutral-compact-header-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "六列紧凑信息条和单页章节骨架，适合周实验、短实验和需要快速核对基础信息的记录型报告。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://xxgc.nxu.edu.cn/info/1011/1208.htm",
+          "incorporation": "仅参考课程、项目、地点、班级、姓名、学号、教师和日期集中呈现的通用信息字段。"
+        },
+        {
+          "url": "https://github.com/megrxu/zjureport",
+          "incorporation": "仅参考正文页紧凑元数据条的组织方式，不复制名称、标识或文件。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-review-panel-lab",
+      "displayName": "评阅记录实验报告",
+      "aliases": ["评阅", "成绩栏", "教师评语", "签名栏"],
+      "file": "neutral-review-panel-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "闭合页面外框、独立成绩列和教师评语签名区，适合纸质提交、教师批阅和归档。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://xxgc.nxu.edu.cn/info/1011/1208.htm",
+          "incorporation": "仅参考实验正文后设置教师审阅区的通用教学文档结构。"
+        },
+        {
+          "url": "https://xxgc.jzu.edu.cn/info/1117/1612.htm",
+          "incorporation": "仅参考实验报告需要包含成绩、评语和签字等教学归档字段的公开要求。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-code-notebook-lab",
+      "displayName": "程序设计实验报告",
+      "aliases": ["代码实验", "编程实验", "程序设计", "调试记录"],
+      "file": "neutral-code-notebook-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "代码块、命令输出、测试用例和调试记录层级明确，适合 C/C++、Python、Java 和算法类实验。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://typst.app/universe/package/simple-bupt-report/",
+          "incorporation": "仅参考中文技术报告中标题、正文、图注和代码的字号层级原则。"
+        },
+        {
+          "url": "https://github.com/Su-anAcid/CQUPT-Course-Report",
+          "incorporation": "仅参考程序设计类报告区分实现、测试与结果的内容角色，不复制品牌或源码。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-data-analysis-lab",
+      "displayName": "实验数据分析报告",
+      "aliases": ["数据分析", "数据记录", "测量实验", "误差分析"],
+      "file": "neutral-data-analysis-lab.docx",
+      "reportTypes": ["experiment-report"],
+      "description": "内置原始值、处理值和备注数据表，并单列趋势与误差分析，适合测量、统计和数据处理实验。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://biosci.lab.scu.edu.cn/info/2283/1087.htm",
+          "incorporation": "仅参考目的、材料方法、结果记录与分析讨论相互分离的通用实验结构。"
+        },
+        {
+          "url": "https://template.wps.com/themes/report-94/",
+          "incorporation": "仅参考常见数据报告对信息表、数据表和分析结论的版面分工，不使用站点资产。"
+        }
+      ]
+    },
+    {
+      "id": "neutral-project-dossier",
+      "displayName": "项目技术报告",
+      "aliases": ["项目技术", "长篇课程设计", "系统设计", "项目档案"],
+      "file": "neutral-project-dossier.docx",
+      "reportTypes": ["course-design-report", "experiment-report"],
+      "description": "独立封面、摘要关键词、需求设计、测试结果和参考文献齐全，适合长篇课程设计与系统项目。",
+      "origin": "original-neutral-reconstruction",
+      "license": "MIT",
+      "thirdPartyAssets": false,
+      "designReferences": [
+        {
+          "url": "https://dnc.buaa.edu.cn/info/1051/1473.htm",
+          "incorporation": "仅参考课程设计报告通常包含封面、正文和附录的公开结构。"
+        },
+        {
+          "url": "https://dgdz.csu.edu.cn/pract_edu/kcsj/kcsj_report.html",
+          "incorporation": "仅参考封面、前言或摘要、目录、章节、参考文献等长篇课程设计构成。"
+        },
+        {
+          "url": "https://github.com/pisceskkk/NUDT_ExperimentReportTemplate",
+          "incorporation": "仅参考长篇技术报告的封面与正文分离原则，不复制名称、标识、资产或源码。"
         }
       ]
     }

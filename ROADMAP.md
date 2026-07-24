@@ -35,7 +35,7 @@ Status: substantially implemented by the universal report refactor.
 
 Before adding more document types, the current experiment-report flow should become easier to trust, debug, and reuse.
 
-Completed foundations include user-template-first fidelity, five reproducible school-neutral fallback templates, catalog-based automatic selection, provenance/identity auditing, and a five-template pipeline regression.
+Completed foundations include user-template-first fidelity, ten reproducible school-neutral fallback templates, catalog-based automatic selection, provenance/identity auditing, a ten-template pipeline regression, and a five-family uploaded-template fidelity corpus.
 
 Priority work:
 

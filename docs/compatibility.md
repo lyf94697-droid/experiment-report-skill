@@ -47,13 +47,14 @@ $env:EXPERIMENT_REPORT_CONFIG = "D:\config\experiment-report.json"
 
 环境变量优先于配置文件，配置文件优先于仓库默认值。
 
-没有配置外部默认模板时，仓库使用五套中性模板目录。普通实验默认 `neutral-classic-lab`，课程设计默认 `neutral-course-design`；也可通过 `-BuiltInTemplateId` 或 Web UI 下拉框选择其他模板。
+没有配置外部默认模板时，仓库使用十套中性模板目录。普通实验默认 `neutral-classic-lab`，课程设计默认 `neutral-course-design`；代码、数据、评阅、短实验和长篇项目可自动推荐专用模板，也可通过 `-BuiltInTemplateId` 或 Web UI 下拉框选择。
 
 ## 模板兼容性
 
 已覆盖的自动化夹具包括：
 
-- 五套仓库中性模板及身份/来源审计
+- 十套仓库中性模板及身份/来源审计
+- 五类结构差异明显的上传模板保真回归
 - 仓库默认模板
 - 4 列学生信息表
 - 5 列学生信息表

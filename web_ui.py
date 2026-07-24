@@ -823,7 +823,7 @@ def resolve_template_path(
     template_path = Path(selection["path"])
     if template_path is None or not template_path.exists():
         raise UploadValidationError(
-            "未上传模板，也没有找到可用的内置或配置模板。请上传 DOCX/DOC，或检查五套内置模板目录。"
+            "未上传模板，也没有找到可用的内置或配置模板。请上传 DOCX/DOC，或检查十套内置模板目录。"
         )
     if template_path.suffix.lower() not in TEMPLATE_EXTENSIONS:
         raise UploadValidationError("模板只支持 .docx 或 .doc。")
@@ -1842,7 +1842,7 @@ def create_app() -> gr.Blocks:
         gr.Markdown("# 实验报告生成 Web UI")
         gr.Markdown(
             "先确认：你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？有就上传，系统优先保留原格式；"
-            "没有就从五套不含学校标识的内置模板中选择。复杂模板建议使用“严格检查”。"
+            "没有就从十套不含学校标识的内置模板中选择。复杂模板建议使用“严格检查”。"
         )
 
         with gr.Row():

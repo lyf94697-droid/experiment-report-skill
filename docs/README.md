@@ -16,7 +16,10 @@
 ## 核心文档
 
 - [architecture.md](architecture.md)
-  说明分阶段流水线、五套中性模板选型、`TemplateStyleContract`、保留/规范化模式、图片清单和严格验证链路。
+  说明分阶段流水线、十套中性模板选型、`TemplateStyleContract`、保留/规范化模式、图片清单和严格验证链路。
+
+- [template-research.md](template-research.md)
+  记录高校公开模板和 GitHub 项目的调研结论、采用边界与十套模板覆盖关系。
 
 - [usage-flow.md](usage-flow.md)
   从收集材料、生成正文、填模板、插截图到交付检查的完整流程。

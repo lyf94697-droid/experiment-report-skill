@@ -5,7 +5,7 @@
 本项目是一条“材料到可交付报告”的通用实验报告流水线。核心约束是：
 
 1. 用户提供 DOCX 模板时，模板版式是最高优先级。
-2. 用户没有模板时，从五套原创中性模板中选择，不直接复制学校模板。
+2. 用户没有模板时，从十套原创中性模板中选择，不直接复制学校模板。
 3. 正文、图片和元数据按模板结构填入，不默认统一套版。
 4. 每个阶段都有结构化产物和可定位错误。
 5. 快速模式适合日常生成；严格模式必须完成 PDF 逐页视觉验收，否则状态为 `needs-fix`。
@@ -81,18 +81,22 @@
 
 课程设计自动流程图和自动结构表格也只在默认模板或显式规范化模式启用，避免破坏用户模板。
 
-## 五套中性模板
+## 十套中性模板
 
 模板目录位于 `examples/report-templates/catalog.json`。选型顺序为：
 
 1. 用户上传模板：直接使用并保真。
-2. 课程设计：`neutral-course-design`。
-3. 明确要求闭合外框：`neutral-bordered-lab`。
-4. 明确要求现代简洁：`neutral-modern-minimal`。
-5. 计算机或工程课程：`neutral-engineering-lab`。
-6. 其他普通实验：`neutral-classic-lab`。
+2. 长篇系统项目：`neutral-project-dossier`；普通课程设计：`neutral-course-design`。
+3. 代码、测试或调试实验：`neutral-code-notebook-lab`。
+4. 测量、统计、数据处理或误差分析：`neutral-data-analysis-lab`。
+5. 教师评语、成绩或签名归档：`neutral-review-panel-lab`。
+6. 周实验、短实验或紧凑记录：`neutral-compact-header-lab`。
+7. 明确要求闭合外框：`neutral-bordered-lab`。
+8. 明确要求现代简洁：`neutral-modern-minimal`。
+9. 计算机网络、操作系统、数据库、Web、Android 或软件工程：`neutral-engineering-lab`。
+10. 其他普通实验：`neutral-classic-lab`。
 
-所有内置模板由 `scripts/build-neutral-templates.py` 从零生成。`audit-template-catalog` 会检查数量、文件、来源字段、真实学校/学院名称、示例长数字身份和嵌入媒体；审计不通过的模板不能作为回退模板。
+所有内置模板由 `scripts/build-neutral-templates.py` 从零生成。`audit-template-catalog` 会检查数量、文件、来源字段、真实学校/学院名称、示例长数字身份和嵌入媒体；审计不通过的模板不能作为回退模板。`run-neutral-template-catalog.ps1` 负责十套成品填充回归，`run-template-fidelity-corpus.ps1` 负责五类上传模板保真回归。
 
 ## 图片策略
 

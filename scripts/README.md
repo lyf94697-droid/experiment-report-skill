@@ -19,7 +19,7 @@
 -TemplateStyleMode preserve
 ```
 
-没有用户模板时，可自动推荐，也可显式选择五套中性模板之一：
+没有用户模板时，可自动推荐，也可显式选择十套中性模板之一：
 
 ```powershell
 python -m universal_report list-templates --repo-root .
@@ -31,7 +31,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
   -OutputDir ".\tests-output\engineering-demo"
 ```
 
-可选 ID 为 `neutral-classic-lab`、`neutral-bordered-lab`、`neutral-engineering-lab`、`neutral-course-design` 和 `neutral-modern-minimal`。只要提供 `-TemplatePath`，用户模板就拥有最高优先级。
+可选 ID 为 `neutral-classic-lab`、`neutral-bordered-lab`、`neutral-engineering-lab`、`neutral-course-design`、`neutral-modern-minimal`、`neutral-compact-header-lab`、`neutral-review-panel-lab`、`neutral-code-notebook-lab`、`neutral-data-analysis-lab` 和 `neutral-project-dossier`。只要提供 `-TemplatePath`，用户模板就拥有最高优先级。
 
 只有明确需要统一样式时使用：
 
@@ -56,7 +56,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
 - `new-report-test-fixtures.ps1`
   生成模板兼容性测试夹具。
 - `build-neutral-templates.py`
-  从零重建五套不含学校标识的内置 DOCX，并更新两个旧文件名兼容别名。
+  从零重建十套不含学校标识的内置 DOCX，并更新两个旧文件名兼容别名。
 
 ## 模板与字段
 

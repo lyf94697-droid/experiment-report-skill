@@ -10,6 +10,7 @@ from xml.etree import ElementTree as ET
 
 CATALOG_RELATIVE_PATH = Path("examples") / "report-templates" / "catalog.json"
 SUPPORTED_TEMPLATE_EXTENSIONS = {".docx", ".doc"}
+EXPECTED_BUILTIN_TEMPLATE_COUNT = 10
 GENERIC_ORGANIZATION_LABELS = {
     "学校",
     "学院",
@@ -123,27 +124,53 @@ def recommend_builtin_template(
     reason = "未提供用户模板，使用该报告类型的默认中性模板。"
 
     if normalized_type == "course-design-report":
-        target_id = "neutral-course-design"
-        reason = "课程设计报告优先使用带封面和正文分节的中性模板。"
+        if any(keyword in context for keyword in ("长篇", "项目技术", "系统设计", "项目档案", "完整项目")):
+            target_id = "neutral-project-dossier"
+            reason = "长篇课程设计或系统项目优先使用封面、摘要、完整正文和参考文献齐全的项目技术报告。"
+        else:
+            target_id = "neutral-course-design"
+            reason = "课程设计报告优先使用带封面和正文分节的中性模板。"
+    elif any(keyword in context for keyword in ("教师评语", "评阅", "成绩栏", "签名栏", "教师批阅")):
+        target_id = "neutral-review-panel-lab"
+        reason = "需求包含教师评语、成绩或签名归档区。"
     elif any(keyword in context for keyword in ("闭合外框", "外框", "表格式", "纸质填写", "传统学校")):
         target_id = "neutral-bordered-lab"
         reason = "需求强调闭合外框或传统表格式版面。"
     elif any(keyword in context for keyword in ("现代", "简洁", "极简", "minimal", "modern")):
         target_id = "neutral-modern-minimal"
         reason = "需求强调现代、简洁或极简版式。"
+    elif any(keyword in context for keyword in ("数据分析", "数据记录", "实验数据", "测量实验", "误差分析", "不确定性", "统计")):
+        target_id = "neutral-data-analysis-lab"
+        reason = "需求强调原始数据、处理值、趋势或误差分析。"
+    elif any(keyword in context for keyword in ("周实验", "短实验", "快速记录", "紧凑", "信息条")):
+        target_id = "neutral-compact-header-lab"
+        reason = "短实验或周实验优先使用信息密度更高的紧凑记录模板。"
+    elif any(
+        keyword in context
+        for keyword in (
+            "c语言",
+            "c++",
+            "python",
+            "java",
+            "程序设计",
+            "编程实验",
+            "算法",
+            "代码",
+            "调试",
+        )
+    ):
+        target_id = "neutral-code-notebook-lab"
+        reason = "程序设计类实验优先使用代码、测试、运行结果和调试记录层级清楚的模板。"
     elif any(
         keyword in context
         for keyword in (
             "计算机网络",
             "操作系统",
             "数据库",
-            "java",
             "web",
             "android",
             "软件工程",
-            "编程",
             "工程",
-            "代码",
         )
     ):
         target_id = "neutral-engineering-lab"
@@ -343,6 +370,9 @@ def audit_builtin_templates(repo_root: Path | str) -> dict[str, Any]:
         "schemaVersion": "1.0",
         "catalogPath": catalog["catalogPath"],
         "templateCount": len(results),
-        "passed": len(results) == 5 and all(item["passed"] for item in results),
+        "passed": (
+            len(results) == EXPECTED_BUILTIN_TEMPLATE_COUNT
+            and all(item["passed"] for item in results)
+        ),
         "templates": results,
     }

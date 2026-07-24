@@ -1,4 +1,4 @@
 interface:
   display_name: "Experiment Report Skill"
   short_description: "Generate Chinese lab and course-design reports from templates, screenshots, code, tutorial pages, and results"
-  default_prompt: "Use $experiment-report to create or complete a Chinese lab or course-design report. If I need a DOCX and have not said whether I have a preferred template, ask once; preserve my uploaded template, otherwise choose from the five neutral built-in templates."
+  default_prompt: "Use $experiment-report to create or complete a Chinese lab or course-design report. If I need a DOCX and have not said whether I have a preferred template, ask once; preserve my uploaded template, otherwise choose from the ten neutral built-in templates."

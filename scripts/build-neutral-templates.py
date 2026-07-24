@@ -21,6 +21,12 @@ TEAL = "176B6D"
 LIGHT_BLUE = "EAF1F5"
 LIGHT_TEAL = "E8F3F1"
 LIGHT_GRAY = "F2F4F6"
+LIGHT_WARM = "F5F1EA"
+LIGHT_GREEN = "EDF4EF"
+CHARCOAL = "263238"
+NAVY = "203A5F"
+FOREST = "315B45"
+WARM_INK = "4B4035"
 WHITE = "FFFFFF"
 
 
@@ -111,6 +117,14 @@ def set_cell_border(cell, *, color: str = "666666", size: int = 8) -> None:
         element.set(qn("w:color"), color)
 
 
+def set_cell_no_wrap(cell) -> None:
+    tc_pr = cell._tc.get_or_add_tcPr()
+    no_wrap = tc_pr.find(qn("w:noWrap"))
+    if no_wrap is None:
+        no_wrap = OxmlElement("w:noWrap")
+        tc_pr.append(no_wrap)
+
+
 def set_table_borders(table, *, color: str = "666666", size: int = 8) -> None:
     tbl_pr = table._tbl.tblPr
     borders = tbl_pr.find(qn("w:tblBorders"))
@@ -162,6 +176,34 @@ def set_table_geometry(table, widths_twips: list[int]) -> None:
                 tc_pr.append(tc_w)
             tc_w.set(qn("w:w"), str(width))
             tc_w.set(qn("w:type"), "dxa")
+
+
+def set_repeat_table_header(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    header = tr_pr.find(qn("w:tblHeader"))
+    if header is None:
+        header = OxmlElement("w:tblHeader")
+        tr_pr.append(header)
+    header.set(qn("w:val"), "true")
+
+
+def set_row_cant_split(row) -> None:
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = tr_pr.find(qn("w:cantSplit"))
+    if cant_split is None:
+        cant_split = OxmlElement("w:cantSplit")
+        tr_pr.append(cant_split)
+    cant_split.set(qn("w:val"), "true")
+
+
+def set_paragraph_shading(paragraph, fill: str) -> None:
+    p_pr = paragraph._p.get_or_add_pPr()
+    shading = p_pr.find(qn("w:shd"))
+    if shading is None:
+        shading = OxmlElement("w:shd")
+        p_pr.append(shading)
+    shading.set(qn("w:fill"), fill)
+    shading.set(qn("w:val"), "clear")
 
 
 def set_page_border(section, *, color: str = "404040", size: int = 12, offset: int = 18) -> None:
@@ -340,6 +382,8 @@ def add_metadata_table(
             paragraph.paragraph_format.space_after = Pt(1)
             run = paragraph.add_run(text)
             is_label = column_index % 2 == 0
+            if is_label:
+                set_cell_no_wrap(cell)
             set_run_font(
                 run,
                 east_asia=label_font if is_label else value_font,
@@ -353,6 +397,42 @@ def add_metadata_table(
     after = doc.add_paragraph()
     after.paragraph_format.first_line_indent = Pt(0)
     after.paragraph_format.space_after = Pt(0)
+
+
+def add_table_cell_text(
+    cell,
+    text: str,
+    *,
+    east_asia: str = "宋体",
+    ascii_font: str = "Times New Roman",
+    size: float = 10.5,
+    bold: bool = False,
+    color: str = INK,
+    align=WD_ALIGN_PARAGRAPH.CENTER,
+    fill: str | None = None,
+    no_wrap: bool = False,
+) -> None:
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    set_cell_margins(cell, top=100, start=120, bottom=100, end=120)
+    if fill:
+        set_cell_fill(cell, fill)
+    if no_wrap:
+        set_cell_no_wrap(cell)
+    paragraph = cell.paragraphs[0]
+    paragraph.clear()
+    paragraph.alignment = align
+    paragraph.paragraph_format.first_line_indent = Pt(0)
+    paragraph.paragraph_format.space_before = Pt(1)
+    paragraph.paragraph_format.space_after = Pt(1)
+    run = paragraph.add_run(text)
+    set_run_font(
+        run,
+        east_asia=east_asia,
+        ascii_font=ascii_font,
+        size=size,
+        bold=bold,
+        color=color,
+    )
 
 
 def add_sections(
@@ -674,12 +754,444 @@ def build_modern(path: Path) -> None:
     doc.save(path)
 
 
+def build_compact_header(path: Path) -> None:
+    doc = Document()
+    configure_document(
+        doc,
+        body_font="宋体",
+        body_size=11.5,
+        heading_font="黑体",
+        heading_color=INK,
+        margins_cm=(1.8, 1.9, 2.0, 2.1),
+    )
+    add_title(
+        doc,
+        "实验记录与分析",
+        font="黑体",
+        size=20,
+        color=INK,
+        subtitle="COMPACT LAB RECORD",
+        before=0,
+    )
+    rows = [
+        ["课程名称", "", "实验名称", "", "日期", ""],
+        ["姓名", "", "学号", "", "班级", ""],
+        ["实验性质", "", "指导教师", "", "实验地点", ""],
+    ]
+    table = doc.add_table(rows=len(rows), cols=6)
+    widths = [1150, 1800, 1150, 2250, 1050, 1800]
+    set_table_geometry(table, widths)
+    set_table_borders(table, color="555555", size=8)
+    for row_index, values in enumerate(rows):
+        for column_index, text in enumerate(values):
+            cell = table.cell(row_index, column_index)
+            is_label = column_index % 2 == 0
+            add_table_cell_text(
+                cell,
+                text,
+                east_asia="黑体" if is_label else "宋体",
+                ascii_font="Arial" if is_label else "Times New Roman",
+                size=9.5 if is_label else 10,
+                bold=is_label,
+                fill=LIGHT_GRAY if is_label else None,
+                no_wrap=is_label,
+            )
+    spacer = doc.add_paragraph()
+    spacer.paragraph_format.first_line_indent = Pt(0)
+    spacer.paragraph_format.space_after = Pt(0)
+    add_sections(
+        doc,
+        [
+            "一、实验目的",
+            "二、实验环境",
+            "三、实验原理",
+            "四、实验步骤",
+            "五、实验结果",
+            "六、问题分析",
+            "七、实验总结",
+        ],
+        body_size=11.5,
+    )
+    add_quiet_header_footer(doc, "实验记录与分析")
+    doc.save(path)
+
+
+def build_review_panel(path: Path) -> None:
+    doc = Document()
+    configure_document(
+        doc,
+        body_font="仿宋",
+        body_size=11.5,
+        heading_font="黑体",
+        heading_color=WARM_INK,
+        margins_cm=(2.2, 2.2, 2.2, 2.35),
+    )
+    set_page_border(doc.sections[0], color="554A3F", size=12, offset=20)
+    add_title(
+        doc,
+        "实验报告与评阅记录",
+        font="黑体",
+        size=20,
+        color=WARM_INK,
+    )
+    table = doc.add_table(rows=4, cols=5)
+    widths = [1400, 2650, 1400, 2650, 1100]
+    set_table_geometry(table, widths)
+    set_table_borders(table, color="6B6055", size=9)
+    values = [
+        ["课程名称", "", "实验性质", "", "成绩"],
+        ["实验名称", "", "日期", "", ""],
+        ["姓名", "", "学号", "", ""],
+        ["班级", "", "指导教师", "", ""],
+    ]
+    score_cell = table.cell(0, 4).merge(table.cell(3, 4))
+    for row in table.rows:
+        set_row_cant_split(row)
+    for row_index in range(4):
+        for column_index in range(4):
+            is_label = column_index % 2 == 0
+            add_table_cell_text(
+                table.cell(row_index, column_index),
+                values[row_index][column_index],
+                east_asia="黑体" if is_label else "仿宋",
+                ascii_font="Arial" if is_label else "Times New Roman",
+                size=10,
+                bold=is_label,
+                fill=LIGHT_WARM if is_label else None,
+                no_wrap=is_label,
+            )
+    add_table_cell_text(
+        score_cell,
+        "成绩",
+        east_asia="黑体",
+        ascii_font="Arial",
+        size=10,
+        bold=True,
+        fill=LIGHT_WARM,
+        no_wrap=True,
+    )
+    spacer = doc.add_paragraph()
+    spacer.paragraph_format.first_line_indent = Pt(0)
+    spacer.paragraph_format.space_after = Pt(0)
+    add_sections(
+        doc,
+        [
+            "一、实验目的",
+            "二、实验条件",
+            "三、实验原理",
+            "四、实验步骤",
+            "五、实验结果",
+            "六、问题分析",
+            "七、实验小结",
+        ],
+        body_font="仿宋",
+        body_size=11.5,
+        placeholder_lines=1,
+    )
+    review = doc.add_table(rows=2, cols=2)
+    set_table_geometry(review, [1800, 7400])
+    set_table_borders(review, color="6B6055", size=9)
+    for row in review.rows:
+        set_row_cant_split(row)
+    add_table_cell_text(
+        review.cell(0, 0),
+        "教师评语",
+        east_asia="黑体",
+        ascii_font="Arial",
+        size=10.5,
+        bold=True,
+        fill=LIGHT_WARM,
+        no_wrap=True,
+    )
+    add_table_cell_text(review.cell(0, 1), "", east_asia="仿宋", size=10.5)
+    add_table_cell_text(
+        review.cell(1, 0),
+        "签名与日期",
+        east_asia="黑体",
+        ascii_font="Arial",
+        size=10.5,
+        bold=True,
+        fill=LIGHT_WARM,
+        no_wrap=True,
+    )
+    add_table_cell_text(review.cell(1, 1), "", east_asia="仿宋", size=10.5)
+    add_quiet_header_footer(doc, "实验报告与评阅记录", color="6B6055")
+    doc.save(path)
+
+
+def build_code_notebook(path: Path) -> None:
+    doc = Document()
+    configure_document(
+        doc,
+        body_font="宋体",
+        body_size=11.5,
+        heading_font="黑体",
+        heading_color=NAVY,
+        margins_cm=(2.0, 2.0, 2.1, 2.2),
+    )
+    add_title(
+        doc,
+        "程序设计实验报告",
+        font="黑体",
+        size=22,
+        color=NAVY,
+        subtitle="IMPLEMENTATION · TEST · DEBUG",
+        subtitle_color="52677E",
+    )
+    add_metadata_table(
+        doc,
+        rows=[
+            ["课程名称", "", "实验名称", ""],
+            ["姓名", "", "学号", ""],
+            ["班级", "", "实验性质", ""],
+            ["指导教师", "", "日期", ""],
+        ],
+        widths_twips=[1500, 3300, 1500, 3300],
+        label_font="黑体",
+        value_font="宋体",
+        label_fill=LIGHT_BLUE,
+        border_color="647A91",
+    )
+    heading_one = doc.styles["Heading 1"]
+    heading_one.font.size = Pt(13)
+    heading_one.paragraph_format.space_before = Pt(7)
+    heading_one.paragraph_format.space_after = Pt(2)
+    code_style = doc.styles.add_style("Code Block", WD_STYLE_TYPE.PARAGRAPH)
+    set_style_font(
+        code_style,
+        east_asia="等线",
+        ascii_font="Consolas",
+        size=9.5,
+        color=CHARCOAL,
+    )
+    code_style.paragraph_format.first_line_indent = Pt(0)
+    code_style.paragraph_format.left_indent = Cm(0.45)
+    code_style.paragraph_format.right_indent = Cm(0.35)
+    code_style.paragraph_format.space_before = Pt(4)
+    code_style.paragraph_format.space_after = Pt(4)
+    code_style.paragraph_format.keep_together = True
+    command_style = doc.styles.add_style("Command Output", WD_STYLE_TYPE.PARAGRAPH)
+    set_style_font(
+        command_style,
+        east_asia="等线",
+        ascii_font="Consolas",
+        size=9.5,
+        color="23352A",
+    )
+    command_style.paragraph_format.first_line_indent = Pt(0)
+    command_style.paragraph_format.left_indent = Cm(0.45)
+    command_style.paragraph_format.right_indent = Cm(0.35)
+    command_style.paragraph_format.space_before = Pt(4)
+    command_style.paragraph_format.space_after = Pt(4)
+    for index, title in enumerate(
+        [
+            "1 实验目的",
+            "2 实验环境",
+            "3 实验原理",
+            "4 实验步骤",
+            "5 实验结果",
+            "6 问题分析",
+            "7 实验总结",
+        ]
+    ):
+        heading = doc.add_paragraph(style="Heading 1")
+        heading.paragraph_format.first_line_indent = Pt(0)
+        heading.add_run(title)
+        paragraph_style = "Code Block" if index == 3 else "Command Output" if index == 4 else None
+        paragraph = doc.add_paragraph(style=paragraph_style)
+        paragraph.paragraph_format.keep_together = True
+        if paragraph_style:
+            set_paragraph_shading(paragraph, "F3F5F7" if index == 3 else "F1F5F2")
+    add_quiet_header_footer(doc, "程序设计实验报告", color=NAVY)
+    doc.save(path)
+
+
+def build_data_analysis(path: Path) -> None:
+    doc = Document()
+    configure_document(
+        doc,
+        body_font="宋体",
+        body_size=11.5,
+        heading_font="黑体",
+        heading_color=FOREST,
+        margins_cm=(2.0, 2.1, 2.2, 2.25),
+    )
+    add_title(
+        doc,
+        "实验数据与分析报告",
+        font="黑体",
+        size=22,
+        color=FOREST,
+        subtitle="DATA · OBSERVATION · ANALYSIS",
+        subtitle_color="5B7464",
+    )
+    add_metadata_table(
+        doc,
+        rows=[
+            ["实验名称", "", "课程名称", ""],
+            ["姓名", "", "学号", ""],
+            ["班级", "", "日期", ""],
+            ["实验性质", "", "指导教师", ""],
+        ],
+        widths_twips=[1550, 3250, 1550, 3250],
+        label_font="黑体",
+        value_font="宋体",
+        label_fill=LIGHT_GREEN,
+        border_color="6F8977",
+    )
+    heading_one = doc.styles["Heading 1"]
+    heading_one.font.size = Pt(13)
+    heading_one.paragraph_format.space_before = Pt(7)
+    heading_one.paragraph_format.space_after = Pt(2)
+    for index, title in enumerate(
+        [
+            "一、实验目的",
+            "二、实验环境",
+            "三、实验原理",
+            "四、实验步骤",
+            "五、实验结果",
+            "六、问题分析",
+            "七、实验总结",
+        ]
+    ):
+        heading = doc.add_paragraph(style="Heading 1")
+        heading.paragraph_format.first_line_indent = Pt(0)
+        heading.add_run(title)
+        paragraph = doc.add_paragraph()
+        paragraph.paragraph_format.first_line_indent = Pt(23)
+        paragraph.paragraph_format.keep_together = True
+        run = paragraph.add_run()
+        set_run_font(run, east_asia="宋体", size=11.5, color=INK)
+        if index == 4:
+            data_table = doc.add_table(rows=4, cols=5)
+            widths = [850, 2400, 1550, 1550, 2850]
+            set_table_geometry(data_table, widths)
+            set_table_borders(data_table, color="78907E", size=8)
+            headers = ["序号", "观测项", "原始值", "处理值", "备注"]
+            set_repeat_table_header(data_table.rows[0])
+            for row in data_table.rows:
+                set_row_cant_split(row)
+            for column_index, header in enumerate(headers):
+                add_table_cell_text(
+                    data_table.cell(0, column_index),
+                    header,
+                    east_asia="黑体",
+                    ascii_font="Arial",
+                    size=9.5,
+                    bold=True,
+                    fill=LIGHT_GREEN,
+                    no_wrap=True,
+                )
+            for row_index in range(1, 4):
+                for column_index in range(5):
+                    add_table_cell_text(
+                        data_table.cell(row_index, column_index),
+                        "",
+                        east_asia="宋体",
+                        size=9.5,
+                    )
+            after = doc.add_paragraph()
+            after.paragraph_format.first_line_indent = Pt(0)
+            after.paragraph_format.space_after = Pt(0)
+    add_quiet_header_footer(doc, "实验数据与分析报告", color=FOREST)
+    doc.save(path)
+
+
+def build_project_dossier(path: Path) -> None:
+    doc = Document()
+    configure_document(
+        doc,
+        body_font="宋体",
+        body_size=12,
+        heading_font="黑体",
+        heading_color=CHARCOAL,
+        margins_cm=(2.5, 2.4, 2.5, 2.7),
+    )
+    cover = doc.sections[0]
+    cover.different_first_page_header_footer = True
+    add_title(
+        doc,
+        "项目技术报告",
+        font="黑体",
+        size=27,
+        color=CHARCOAL,
+        subtitle="PROJECT TECHNICAL DOSSIER",
+        subtitle_color="667078",
+        before=82,
+    )
+    topic = doc.add_paragraph()
+    topic.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    topic.paragraph_format.first_line_indent = Pt(0)
+    topic.paragraph_format.space_before = Pt(22)
+    topic.paragraph_format.space_after = Pt(30)
+    run = topic.add_run("课题名称：")
+    set_run_font(run, east_asia="宋体", size=15, bold=True, color=CHARCOAL)
+    add_metadata_table(
+        doc,
+        rows=[
+            ["学生姓名", ""],
+            ["学号", ""],
+            ["班级", ""],
+            ["课程名称", ""],
+            ["指导教师", ""],
+            ["完成时间", ""],
+        ],
+        widths_twips=[2300, 6600],
+        label_font="黑体",
+        value_font="宋体",
+        label_fill=LIGHT_GRAY,
+        border_color="707980",
+    )
+    body = doc.add_section(WD_SECTION.NEW_PAGE)
+    body.page_width = Mm(210)
+    body.page_height = Mm(297)
+    body.top_margin = Cm(2.3)
+    body.right_margin = Cm(2.4)
+    body.bottom_margin = Cm(2.5)
+    body.left_margin = Cm(2.7)
+    heading_one = doc.styles["Heading 1"]
+    heading_one.font.size = Pt(13)
+    heading_one.paragraph_format.space_before = Pt(7)
+    heading_one.paragraph_format.space_after = Pt(2)
+    add_title(
+        doc,
+        "项目技术报告",
+        font="黑体",
+        size=20,
+        color=CHARCOAL,
+        before=0,
+    )
+    add_sections(
+        doc,
+        [
+            "摘要",
+            "关键词",
+            "1 设计目标",
+            "2 开发环境",
+            "3 需求分析",
+            "4 方案设计与实现",
+            "5 运行结果",
+            "6 问题与改进",
+            "7 设计总结",
+            "参考文献",
+        ],
+        placeholder_lines=1,
+    )
+    add_quiet_header_footer(doc, "项目技术报告", color="5F6971")
+    doc.save(path)
+
+
 BUILDERS = {
     "neutral-classic-lab.docx": build_classic,
     "neutral-bordered-lab.docx": build_bordered,
     "neutral-engineering-lab.docx": build_engineering,
     "neutral-course-design.docx": build_course_design,
     "neutral-modern-minimal.docx": build_modern,
+    "neutral-compact-header-lab.docx": build_compact_header,
+    "neutral-review-panel-lab.docx": build_review_panel,
+    "neutral-code-notebook-lab.docx": build_code_notebook,
+    "neutral-data-analysis-lab.docx": build_data_analysis,
+    "neutral-project-dossier.docx": build_project_dossier,
 }
 
 

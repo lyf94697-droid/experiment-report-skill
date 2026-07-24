@@ -4,7 +4,7 @@
 
 - 如果用户要生成 DOCX，但尚未说明是否有模板，先问一次：“你有老师、学校或自己认可的优秀 DOCX/DOC 模板吗？”
 - 用户提供模板时，它拥有最高优先级，不与内置模板混搭。
-- 用户明确没有模板时，从 `examples/report-templates/catalog.json` 的五套中性模板中选择，不再反复追问。
+- 用户明确没有模板时，从 `examples/report-templates/catalog.json` 的十套中性模板中选择，不再反复追问。
 - 先识别模板里的固定标题、编号、表格字段、封面字段。
 - 输出时按模板顺序组织，不要擅自改编号。
 - 如果模板标题和常规模板不同，优先服从模板。
@@ -43,21 +43,30 @@
 - Fill missing explanatory sections from the article, but keep the result section aligned with the user's actual outputs.
 - If the article includes code and the user has not provided their own code, mark it as reference implementation instead of pretending it is the user's exact work.
 
-## 6. Five neutral built-in templates
+## 6. Ten neutral built-in templates
 
 - `neutral-classic-lab`：经典四列信息表，适合普通课程实验。
 - `neutral-bordered-lab`：闭合页面外框，适合强调传统纸质版式的报告。
 - `neutral-engineering-lab`：技术层级、代码和图注样式更明确，适合计算机与工程类实验。
 - `neutral-course-design`：独立封面和正文分节，适合课程设计、综合实验和项目报告。
 - `neutral-modern-minimal`：两列元数据和轻量层级，适合现代简洁风格。
+- `neutral-compact-header-lab`：六列紧凑信息条，适合周实验、短实验和快速记录。
+- `neutral-review-panel-lab`：成绩、教师评语和签名区齐全，适合纸质批阅与归档。
+- `neutral-code-notebook-lab`：代码、测试、输出和调试记录层级明确，适合程序设计实验。
+- `neutral-data-analysis-lab`：原始值、处理值、趋势和误差分析分离，适合测量与统计实验。
+- `neutral-project-dossier`：封面、摘要、长篇正文和参考文献齐全，适合系统项目。
 
 自动选择顺序：
 
-1. 课程设计或综合项目 → `neutral-course-design`
-2. 明确要求闭合外框 → `neutral-bordered-lab`
-3. 明确要求现代或极简 → `neutral-modern-minimal`
-4. 计算机、编程或工程课程 → `neutral-engineering-lab`
-5. 其他实验 → `neutral-classic-lab`
+1. 长篇系统项目 → `neutral-project-dossier`；普通课程设计 → `neutral-course-design`
+2. 代码、测试或调试实验 → `neutral-code-notebook-lab`
+3. 数据记录、测量、统计或误差分析 → `neutral-data-analysis-lab`
+4. 教师评语、成绩或签名归档 → `neutral-review-panel-lab`
+5. 周实验、短实验或紧凑记录 → `neutral-compact-header-lab`
+6. 明确要求闭合外框 → `neutral-bordered-lab`
+7. 明确要求现代或极简 → `neutral-modern-minimal`
+8. 计算机网络、操作系统、数据库、Web、Android 或软件工程 → `neutral-engineering-lab`
+9. 其他实验 → `neutral-classic-lab`
 
 ## 7. Neutrality and provenance gate
 

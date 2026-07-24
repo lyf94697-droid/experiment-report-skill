@@ -1,6 +1,6 @@
 # 使用流程
 
-这条流水线把实验报告拆成四类输入：实验要求、参考资料、真实证据、首选模板。项目的目标不是替你凭空写一份报告，而是把这些材料整理成可复查的 `docx` 交付物。用户模板始终优先；没有用户模板时，从五套不含学校标识的内置模板中选择。
+这条流水线把实验报告拆成四类输入：实验要求、参考资料、真实证据、首选模板。项目的目标不是替你凭空写一份报告，而是把这些材料整理成可复查的 `docx` 交付物。用户模板始终优先；没有用户模板时，从十套不含学校标识的内置模板中选择。
 
 ## 总流程
 
@@ -17,7 +17,7 @@
 
 3. 选择并填充模板
    - 有老师、学校或自己认可的模板时，优先使用并保持原格式
-   - 没有用户模板时，按报告类型、课程和风格要求从五套中性模板中自动选择，也可显式指定模板 ID
+   - 没有用户模板时，按报告类型、课程和风格要求从十套中性模板中自动选择，也可显式指定模板 ID
    - 先提取模板结构
    - 生成字段映射
    - 把 metadata 和正文写回 `docx`
@@ -113,5 +113,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\build-report.ps1 `
 
 - 运行 `scripts\check-project-readiness.ps1`，确认项目展示材料没有缺文件
 - 跑一次 `scripts\run-one-click-demo.ps1`，确认最小演示链路可用
-- 运行 `python -m universal_report audit-template-catalog --repo-root .`，确认五套内置模板的身份和来源审计通过
+- 运行 `python -m universal_report audit-template-catalog --repo-root .`，确认十套内置模板的身份和来源审计通过
+- 运行 `tests/run-template-fidelity-corpus.ps1`，确认上传模板优先级、关键格式契约和样式部件保持通过
 - 对正式报告运行 layout check，并人工打开最终 `docx` 检查图、表、标题和分页
