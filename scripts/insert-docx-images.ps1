@@ -1023,8 +1023,7 @@ function Get-SingleXmlNode {
   )
 
   if ($NodeLike -is [System.Xml.XmlNode]) {
-    Write-Output -NoEnumerate $NodeLike
-    return
+    return ,$NodeLike
   }
 
   $candidates = @($NodeLike | Where-Object { $_ -is [System.Xml.XmlNode] })
@@ -1032,7 +1031,7 @@ function Get-SingleXmlNode {
     throw "Expected an XmlNode-compatible value."
   }
 
-  Write-Output -NoEnumerate $candidates[0]
+  return ,$candidates[0]
 }
 
 function New-ImageParagraph {
@@ -1424,8 +1423,7 @@ function Get-SectionEndInsertionNode {
   )
 
   if ($TargetNode.LocalName -ne "p" -or $TargetNode.ParentNode.LocalName -ne "body") {
-    Write-Output -NoEnumerate $TargetNode
-    return
+    return ,$TargetNode
   }
 
   $insertionNode = $TargetNode
@@ -1446,7 +1444,7 @@ function Get-SectionEndInsertionNode {
     $cursor = $cursor.NextSibling
   }
 
-  Write-Output -NoEnumerate $insertionNode
+  return ,$insertionNode
 }
 
 function Get-EffectiveInsertionNode {
@@ -1461,11 +1459,10 @@ function Get-EffectiveInsertionNode {
   $targetNode = Get-SingleXmlNode -NodeLike $ResolvedTarget.Node
   if ([string]$ResolvedTarget.ResolutionKey -like "section:*") {
     $sectionEndNode = Get-SectionEndInsertionNode -TargetNode $targetNode -NamespaceManager $NamespaceManager
-    Write-Output -NoEnumerate $sectionEndNode
-    return
+    return ,$sectionEndNode
   }
 
-  Write-Output -NoEnumerate $targetNode
+  return ,$targetNode
 }
 
 function Get-EffectiveRowLayoutTarget {

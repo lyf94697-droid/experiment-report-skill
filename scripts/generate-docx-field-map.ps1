@@ -607,10 +607,23 @@ $sectionRules = @(
   }
 )
 
+$sectionHeadingLookupKeys = @{}
+foreach ($rule in $sectionRules) {
+  foreach ($alias in @($rule.aliases)) {
+    $headingKey = Get-SectionHeadingLookupKey -Text ([string]$alias)
+    if (-not [string]::IsNullOrWhiteSpace($headingKey)) {
+      $sectionHeadingLookupKeys[$headingKey] = $true
+    }
+  }
+}
+
 $extraSectionRules = @(
   foreach ($heading in $extraSectionHeadings) {
     $headingKey = Get-SectionHeadingLookupKey -Text ([string]$heading)
     if ([string]::IsNullOrWhiteSpace($headingKey)) {
+      continue
+    }
+    if ($sectionHeadingLookupKeys.ContainsKey($headingKey)) {
       continue
     }
 
