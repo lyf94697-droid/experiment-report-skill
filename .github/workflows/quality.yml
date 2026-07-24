@@ -26,6 +26,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install test dependencies
+        shell: ${{ matrix.shell_name }}
+        run: python -m pip install --disable-pip-version-check "Pillow>=10.0"
+
       - name: Run smoke tests
         shell: ${{ matrix.shell_name }}
         run: .\scripts\run-smoke-tests.ps1
