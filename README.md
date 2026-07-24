@@ -60,6 +60,8 @@ tests-output/one-click-demo-时间戳/
 
 DOCX 在 Word、WPS 和 LibreOffice 中可能出现少量分页差异，所以“保留模板”指关键格式和结构保持一致，不承诺不同软件逐像素相同。
 
+模板分析结果保存在 `template-style-contract.json`，脚本和文档中称为 `TemplateStyleContract`。它记录页面、字体、段落、表格、页眉页脚和图注等后续需要对照的格式。
+
 ## 十套内置模板
 
 内置模板不含学校名、学院名、校徽、水印、真实学生信息和第三方图片。
@@ -134,6 +136,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\install-skill.ps1 -Platform openclaw -Force
 ```
+
+材料来自聊天附件或本地附件路径时，可以使用：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\build-report-from-feishu.ps1
+```
+
+完整参数见 [聊天附件示例](examples/feishu-uploaded-images-docx-prompt.md)。
 
 ### 2. 直接运行 PowerShell
 
@@ -279,15 +289,18 @@ outputs/network-dos/
 - 从公开教程整理正文时，不直接复制原文；实验结果仍以用户材料为准。
 - 严格检查能发现常见排版问题，但不能代替课程要求和人工复核。
 
-## 进一步阅读
+## 文档导航
 
 - [使用流程](docs/usage-flow.md)
 - [模板填充规则](docs/template-filling.md)
 - [模板调研与来源边界](docs/template-research.md)
 - [截图与图注](docs/screenshot-evidence.md)
+- [一键示例说明](docs/one-click-demo.md)
 - [架构说明](docs/architecture.md)
 - [兼容性](docs/compatibility.md)
 - [常见问题](docs/troubleshooting.md)
+- [后续安排](ROADMAP.md)
+- [GitHub 与社交平台发布材料](docs/social-launch-kit.md)
 - [全部文档](docs/README.md)
 
 ## 检查仓库
@@ -317,7 +330,13 @@ powershell -ExecutionPolicy Bypass -File .\tests\run-neutral-template-catalog.ps
 powershell -ExecutionPolicy Bypass -File .\tests\run-template-fidelity-corpus.ps1
 ```
 
-## 目录
+通用端到端场景：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\run-universal-e2e.ps1
+```
+
+## 仓库目录
 
 ```text
 experiment-report-skill/
