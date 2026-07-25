@@ -271,11 +271,12 @@ outputs/network-dos/
 <!-- project-readiness:scenarios -->
 ## 示例
 
-仓库里放了三组完整材料，不写死页数，实际页数以本机 Word、WPS 或 LibreOffice 渲染结果为准。
+仓库里放了三组完整案例和十份模板成品，不写死页数，实际页数以本机 Word、WPS 或 LibreOffice 渲染结果为准。
 
 - [局域网与 DOS 命令](examples/cases/network-dos/README.md)：拓扑、主机配置、连通性和故障分析，共 5 张示例图。
 - [进程调度](examples/cases/os-process-scheduling/README.md)：流程、甘特图、指标、控制台和测试结果。
 - [学生成绩管理系统课程设计](examples/cases/course-design-student-management/README.md)：需求、架构、数据模型、界面和测试材料。
+- [十套模板成品](examples/template-examples/README.md)：每套模板各有一份独立主题的完整 DOCX，正文、数据、结果图、图注和封面信息均已填好。
 
 演示图片见 [demo/README.md](demo/README.md)，模板文件见 [examples/report-templates](examples/report-templates/README.md)。
 

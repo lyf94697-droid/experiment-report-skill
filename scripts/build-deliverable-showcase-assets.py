@@ -230,7 +230,7 @@ def network_diagnosis(path: Path):
         x += 290
     rounded(draw, (180, 645, 1420, 790), fill=SOFT, outline=GRID, width=2)
     draw.text((220, 675), "本次异常复现：", font=font(25, bold=True), fill=INK)
-    draw.text((420, 675), "将主机 B 掩码误设为 255.255.0.0 后，地址规划不一致；恢复 /24 并清理 ARP 缓存后通信恢复。", font=font(23), fill=MUTED)
+    draw.text((420, 675), "将主机 B 掩码误设为 255.255.255.252 后，地址规划不一致；恢复 /24 并清理 ARP 缓存后通信恢复。", font=font(23), fill=MUTED)
     draw.text((220, 730), "排查原则：", font=font(25, bold=True), fill=INK)
     draw.text((350, 730), "每一步都记录命令、现象和结论，避免只写“重启后正常”。", font=font(23), fill=MUTED)
     save(image, path)

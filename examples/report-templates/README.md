@@ -23,6 +23,8 @@
 
 `experiment-report-template.docx` 和 `course-design-report-template.docx` 是兼容旧命令的别名，分别指向经典实验报告和课程设计报告的当前版本。
 
+每套模板填入完整正文后的效果见 [十套模板成品](../template-examples/README.md)。这些成品分别使用网络、操作系统、数据库、Web、Linux、JUnit、Python、数据分析和 Android 等不同主题，不是同一篇正文的重复套版。
+
 ## 使用建议
 
 - 有用户模板时始终优先使用用户模板，并保持其格式。

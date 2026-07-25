@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-engineering-lab\\assets\\explain-plan.png",
+      "section": "实验结果",
+      "caption": "图1 复合索引建立前后的执行计划",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\template-examples\\neutral-engineering-lab\\assets\\query-performance.png",
+      "section": "实验结果",
+      "caption": "图2 查询收益与写入代价对比",
+      "widthCm": 15.5
+    }
+  ]
+}

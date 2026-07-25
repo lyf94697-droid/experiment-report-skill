@@ -7,6 +7,7 @@
 - [cases/README.md](cases/README.md)
 - [demo-one-click/README.md](demo-one-click/README.md)
 - [report-templates/README.md](report-templates/README.md)
+- [template-examples/README.md](template-examples/README.md)
 
 ## 典型案例
 
@@ -26,6 +27,9 @@
 
 - `report-templates/`
   仓库内置的十套中性模板、机器可读目录和两个旧文件名兼容别名。
+
+- `template-examples/`
+  十套模板各自对应的正式成品。每份都有独立主题、完整正文、结果数据、图片和图注，可以直接查看真实排版效果。
 
 - `docx-field-map.json`
   字段映射示例，适合看模板填充格式。
@@ -53,4 +57,5 @@
 - 想看完整场景：从 `cases/network-dos` 开始
 - 想理解 JSON 格式：看 `docx-field-map.json` 和 `docx-image-specs*.json`
 - 没有学校模板：从 `report-templates/README.md` 的十套中性模板中选择
+- 想先看成品：打开 `template-examples/docx/` 中对应主题的 DOCX
 - 想适配自己的模板：先看 `report-templates/README.md` 和 `../docs/template-filling.md`

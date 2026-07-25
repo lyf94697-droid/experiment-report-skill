@@ -54,7 +54,9 @@ $requiredFiles = @(
   "examples\cases\course-design-student-management\README.md",
   "examples\cases\course-design-student-management\prompt.md",
   "examples\cases\course-design-student-management\metadata.json",
-  "examples\cases\course-design-student-management\requirements.json"
+  "examples\cases\course-design-student-management\requirements.json",
+  "examples\template-examples\README.md",
+  "examples\template-examples\catalog.json"
 )
 
 foreach ($relativePath in $requiredFiles) {

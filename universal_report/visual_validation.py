@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -84,9 +86,8 @@ def inspect_pdf(
     dpi: int = 144,
 ) -> dict[str, Any]:
     try:
-        import fitz
         from PIL import Image
-    except ImportError as exc:
+    except ImportError:
         return {
             "schemaVersion": "1.0",
             "status": "needs-fix",
@@ -96,8 +97,8 @@ def inspect_pdf(
             "errors": [
                 {
                     "code": "visual-render-dependency-missing",
-                    "message": "缺少 PyMuPDF 或 Pillow，无法执行严格视觉验收。",
-                    "suggestion": "运行 python -m pip install -r requirements-web.txt 后重试。",
+                    "message": "缺少 Pillow，无法执行严格视觉验收。",
+                    "suggestion": "使用工作区自带的 Python 运行，或安装 requirements-web.txt 后重试。",
                 }
             ],
         }
@@ -105,28 +106,124 @@ def inspect_pdf(
     source = Path(pdf_path).resolve()
     target_dir = Path(output_dir).resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
-    document = fitz.open(str(source))
     pages = []
     try:
-        scale = max(1.0, dpi / 72.0)
-        for page_index in range(document.page_count):
-            page = document.load_page(page_index)
-            pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
-            image = Image.frombytes("RGB", (pixmap.width, pixmap.height), pixmap.samples)
-            preview_path = target_dir / f"page-{page_index + 1}.png"
-            image.save(preview_path)
-            metrics = _page_metrics(image, require_closed_frame=require_closed_frame)
-            pages.append(
-                {
-                    "page": page_index + 1,
-                    "previewPath": str(preview_path),
-                    "width": pixmap.width,
-                    "height": pixmap.height,
-                    **metrics,
-                }
+        import fitz
+    except ImportError:
+        fitz = None
+
+    if fitz is not None:
+        document = fitz.open(str(source))
+        try:
+            scale = max(1.0, dpi / 72.0)
+            for page_index in range(document.page_count):
+                page = document.load_page(page_index)
+                pixmap = page.get_pixmap(
+                    matrix=fitz.Matrix(scale, scale),
+                    alpha=False,
+                )
+                image = Image.frombytes(
+                    "RGB",
+                    (pixmap.width, pixmap.height),
+                    pixmap.samples,
+                )
+                preview_path = target_dir / f"page-{page_index + 1}.png"
+                image.save(preview_path)
+                metrics = _page_metrics(
+                    image,
+                    require_closed_frame=require_closed_frame,
+                )
+                pages.append(
+                    {
+                        "page": page_index + 1,
+                        "previewPath": str(preview_path),
+                        "width": pixmap.width,
+                        "height": pixmap.height,
+                        **metrics,
+                    }
+                )
+        finally:
+            document.close()
+    else:
+        pdftoppm = shutil.which("pdftoppm")
+        if pdftoppm is None:
+            return {
+                "schemaVersion": "1.0",
+                "status": "needs-fix",
+                "passed": False,
+                "pageCount": 0,
+                "pages": [],
+                "errors": [
+                    {
+                        "code": "visual-render-dependency-missing",
+                        "message": "缺少 PyMuPDF 和 pdftoppm，无法把 PDF 渲染为逐页预览图。",
+                        "suggestion": "使用工作区依赖中的 pdftoppm，或安装 requirements-web.txt 后重试。",
+                    }
+                ],
+            }
+        pdftoppm_path = Path(pdftoppm).resolve()
+        if pdftoppm_path.suffix.lower() in {".cmd", ".bat"}:
+            dependency_root = pdftoppm_path.parents[2]
+            native_executable = (
+                dependency_root
+                / "native"
+                / "poppler"
+                / "Library"
+                / "bin"
+                / "pdftoppm.exe"
             )
-    finally:
-        document.close()
+            if native_executable.is_file():
+                pdftoppm = str(native_executable)
+        prefix = target_dir / "page"
+        completed = subprocess.run(
+            [
+                pdftoppm,
+                "-png",
+                "-r",
+                str(max(72, dpi)),
+                str(source),
+                str(prefix),
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            return {
+                "schemaVersion": "1.0",
+                "status": "needs-fix",
+                "passed": False,
+                "pageCount": 0,
+                "pages": [],
+                "errors": [
+                    {
+                        "code": "pdf-preview-render-failed",
+                        "message": completed.stderr.strip()
+                        or "pdftoppm 未能生成逐页预览图。",
+                        "suggestion": "检查 PDF 文件是否完整，以及 pdftoppm 是否可以运行。",
+                    }
+                ],
+            }
+        preview_paths = sorted(
+            target_dir.glob("page-*.png"),
+            key=lambda path: int(path.stem.rsplit("-", 1)[-1]),
+        )
+        for page_index, preview_path in enumerate(preview_paths, start=1):
+            with Image.open(preview_path) as source_image:
+                image = source_image.convert("RGB")
+                metrics = _page_metrics(
+                    image,
+                    require_closed_frame=require_closed_frame,
+                )
+                pages.append(
+                    {
+                        "page": page_index,
+                        "previewPath": str(preview_path),
+                        "width": image.width,
+                        "height": image.height,
+                        **metrics,
+                    }
+                )
 
     failed_pages = [item["page"] for item in pages if not item["passed"]]
     passed = bool(pages) and not failed_pages

@@ -1,0 +1,10 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-compact-header-lab\\assets\\permission-terminal.png",
+      "section": "实验结果",
+      "caption": "图1 共享目录权限配置与用户访问验证",
+      "widthCm": 15.5
+    }
+  ]
+}

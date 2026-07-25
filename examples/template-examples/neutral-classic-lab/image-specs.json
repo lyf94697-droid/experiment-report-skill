@@ -1,0 +1,34 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\cases\\network-dos\\assets\\network-topology.png",
+      "section": "实验原理或任务要求",
+      "caption": "图1 局域网拓扑与 IPv4 地址规划",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\network-dos\\assets\\host-a-ipconfig.png",
+      "section": "实验步骤",
+      "caption": "图2 Host-A 静态地址核对结果",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\network-dos\\assets\\host-b-config.png",
+      "section": "实验步骤",
+      "caption": "图3 Host-B 接口配置与反向测试",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\network-dos\\assets\\connectivity-evidence.png",
+      "section": "实验结果",
+      "caption": "图4 ping 与 ARP 连通性验证结果",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\cases\\network-dos\\assets\\failure-diagnosis.png",
+      "section": "问题分析",
+      "caption": "图5 地址与掩码故障定位记录",
+      "widthCm": 15.5
+    }
+  ]
+}

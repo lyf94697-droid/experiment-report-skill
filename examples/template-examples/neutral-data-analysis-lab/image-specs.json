@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-data-analysis-lab\\assets\\measurement-record.png",
+      "section": "实验结果",
+      "caption": "图1 温度传感器测量与处理记录",
+      "widthCm": 15.2
+    },
+    {
+      "path": ".\\examples\\template-examples\\neutral-data-analysis-lab\\assets\\calibration-chart.png",
+      "section": "实验结果",
+      "caption": "图2 温度传感器标定曲线与误差指标",
+      "widthCm": 15.2
+    }
+  ]
+}

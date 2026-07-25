@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-code-notebook-lab\\assets\\merge-sort-flow.png",
+      "section": "实验原理或任务要求",
+      "caption": "图1 归并排序的分解与合并过程",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\template-examples\\neutral-code-notebook-lab\\assets\\benchmark-chart.png",
+      "section": "实验结果",
+      "caption": "图2 不同数据规模下的运行时间",
+      "widthCm": 15.5
+    }
+  ]
+}

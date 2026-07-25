@@ -1,0 +1,36 @@
+课程名称：Linux 系统基础
+实验名称：文件权限与用户组管理
+
+实验目的
+
+掌握 Linux 文件属主、属组和 rwx 权限的查看与修改方法，能够使用 chmod、chown、chgrp、umask 和 id 命令完成共享目录的权限配置，并验证普通用户的实际访问结果。
+
+实验环境
+
+实验系统为 Ubuntu 24.04 LTS 虚拟机，内核版本 6.8。建立 alice、bob 两个普通用户和 project 共享组，测试目录为 /srv/project。所有管理命令通过具有 sudo 权限的实验账户执行。
+
+实验原理或任务要求
+
+Linux 将权限分为属主、属组和其他用户三组，每组包含读、写、执行权限。目录的执行权限决定是否能进入和访问目录项。共享目录需要让 project 组成员可读写，同时禁止非组成员访问；通过 setgid 位使新建文件自动继承 project 属组，umask 0002 使组成员保留写权限。
+
+实验步骤
+
+1. 创建 project 组，将 alice 和 bob 加入该组，重新登录后使用 id 命令确认附加组生效。
+
+2. 创建 /srv/project，执行 chown root:project /srv/project，并用 chmod 2770 /srv/project 设置组读写执行权限和 setgid 位。
+
+3. 以 alice 身份在目录中创建 task.txt，写入一行测试文字；使用 ls -l 检查文件属组。
+
+4. 以 bob 身份追加第二行，再以不属于 project 组的 carol 尝试进入目录，记录结果。
+
+实验结果
+
+/srv/project 的权限显示为 drwxrws---，属主为 root，属组为 project。alice 创建的 task.txt 自动继承 project 属组，权限为 -rw-rw-r--。bob 能够读取并追加内容；carol 执行 cd /srv/project 时返回 Permission denied，符合共享范围要求。
+
+问题分析
+
+初次测试中 bob 仍提示无权限，原因是添加用户组后没有重新建立登录会话，当前 shell 的附加组列表尚未更新。重新登录后问题消失。若只设置 chmod 770 而不设置 setgid，新文件可能继承用户主组，后续协作会受到影响。
+
+实验总结
+
+本实验完成了用户组、共享目录和继承权限配置。权限判断必须结合文件类型、属主、属组、rwx 位和当前进程的组身份，验证时应使用不同用户实际执行读、写和进入操作，不能只看 ls 输出。

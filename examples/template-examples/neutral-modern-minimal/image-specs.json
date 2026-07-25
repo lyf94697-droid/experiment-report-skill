@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-modern-minimal\\assets\\responsive-layout.png",
+      "section": "实验结果",
+      "caption": "图1 三种视口下的响应式课程卡片布局",
+      "widthCm": 15.5
+    },
+    {
+      "path": ".\\examples\\template-examples\\neutral-modern-minimal\\assets\\quality-check.png",
+      "section": "实验结果",
+      "caption": "图2 多视口检查与质量记录",
+      "widthCm": 15.5
+    }
+  ]
+}

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": "1.0",
+  "notice": "全部姓名、学号、班级、教师、日期和实验数据均为虚构内容，只用于展示模板写法与排版。",
+  "examples": [
+    {
+      "id": "neutral-classic-lab",
+      "displayName": "经典实验报告",
+      "topic": "静态地址配置与双向连通性验证",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-classic-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-classic-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-classic-lab/image-specs.json",
+      "output": "01-经典实验报告-静态地址配置与双向连通性验证.docx"
+    },
+    {
+      "id": "neutral-bordered-lab",
+      "displayName": "闭合外框实验报告",
+      "topic": "进程调度算法比较",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-bordered-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-bordered-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-bordered-lab/image-specs.json",
+      "output": "02-闭合外框实验报告-进程调度算法比较.docx"
+    },
+    {
+      "id": "neutral-engineering-lab",
+      "displayName": "工程技术实验报告",
+      "topic": "复合索引对查询性能的影响",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-engineering-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-engineering-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-engineering-lab/image-specs.json",
+      "output": "03-工程技术实验报告-复合索引对查询性能的影响.docx"
+    },
+    {
+      "id": "neutral-course-design",
+      "displayName": "课程设计报告",
+      "topic": "学生成绩管理系统",
+      "profile": "course-design-report",
+      "report": "examples/cases/course-design-student-management/report.txt",
+      "metadata": "examples/template-examples/neutral-course-design/metadata.json",
+      "imageSpecs": "examples/cases/course-design-student-management/image-specs.json",
+      "output": "04-课程设计报告-学生成绩管理系统.docx"
+    },
+    {
+      "id": "neutral-modern-minimal",
+      "displayName": "现代简洁实验报告",
+      "topic": "响应式课程卡片布局",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-modern-minimal/report.txt",
+      "metadata": "examples/template-examples/neutral-modern-minimal/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-modern-minimal/image-specs.json",
+      "output": "05-现代简洁实验报告-响应式课程卡片布局.docx"
+    },
+    {
+      "id": "neutral-compact-header-lab",
+      "displayName": "紧凑信息条实验报告",
+      "topic": "Linux 文件权限与用户组管理",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-compact-header-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-compact-header-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-compact-header-lab/image-specs.json",
+      "output": "06-紧凑信息条实验报告-Linux文件权限与用户组管理.docx"
+    },
+    {
+      "id": "neutral-review-panel-lab",
+      "displayName": "评阅记录实验报告",
+      "topic": "JUnit 参数化测试与边界值验证",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-review-panel-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-review-panel-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-review-panel-lab/image-specs.json",
+      "output": "07-评阅记录实验报告-JUnit参数化测试与边界值验证.docx"
+    },
+    {
+      "id": "neutral-code-notebook-lab",
+      "displayName": "程序设计实验报告",
+      "topic": "归并排序实现与性能测试",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-code-notebook-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-code-notebook-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-code-notebook-lab/image-specs.json",
+      "output": "08-程序设计实验报告-归并排序实现与性能测试.docx"
+    },
+    {
+      "id": "neutral-data-analysis-lab",
+      "displayName": "实验数据分析报告",
+      "topic": "温度传感器标定与误差分析",
+      "profile": "experiment-report",
+      "report": "examples/template-examples/neutral-data-analysis-lab/report.txt",
+      "metadata": "examples/template-examples/neutral-data-analysis-lab/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-data-analysis-lab/image-specs.json",
+      "output": "09-实验数据分析报告-温度传感器标定与误差分析.docx",
+      "dataTableRows": [
+        ["1", "零点输出", "0.503 V", "0.500 V", "扣除仪表零漂"],
+        ["2", "25 ℃ 输出", "2.504 V", "2.500 V", "三次测量均值"],
+        ["3", "50 ℃ 输出", "4.508 V", "4.505 V", "剔除一个异常值"]
+      ]
+    },
+    {
+      "id": "neutral-project-dossier",
+      "displayName": "项目技术报告",
+      "topic": "个人任务清单 Android 应用",
+      "profile": "course-design-report",
+      "report": "examples/template-examples/neutral-project-dossier/report.txt",
+      "metadata": "examples/template-examples/neutral-project-dossier/metadata.json",
+      "imageSpecs": "examples/template-examples/neutral-project-dossier/image-specs.json",
+      "output": "10-项目技术报告-个人任务清单Android应用.docx"
+    }
+  ]
+}

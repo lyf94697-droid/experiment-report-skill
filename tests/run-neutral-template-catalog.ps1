@@ -92,67 +92,20 @@ $audit = (Get-Content -LiteralPath $auditPath -Raw -Encoding UTF8) | ConvertFrom
 Assert-True -Condition ([bool]$audit.passed) -Message "All ten built-in templates must pass identity and provenance checks."
 Assert-True -Condition (@($audit.templates).Count -eq 10) -Message "The built-in template catalog must contain exactly ten templates."
 
+$exampleCatalogPath = Join-Path $repoRoot "examples\template-examples\catalog.json"
+$exampleCatalog = (Get-Content -LiteralPath $exampleCatalogPath -Raw -Encoding UTF8) | ConvertFrom-Json
 $cases = @(
-  [pscustomobject]@{
-    id = "neutral-classic-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-bordered-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-engineering-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-course-design"
-    profile = "course-design-report"
-    report = "examples\cases\course-design-student-management\report.txt"
-    metadata = "examples\cases\course-design-student-management\metadata.json"
-    imageSpecs = "examples\cases\course-design-student-management\image-specs.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-modern-minimal"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-compact-header-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-review-panel-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-code-notebook-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-data-analysis-lab"
-    profile = "experiment-report"
-    report = "examples\sample-report.txt"
-    metadata = "examples\docx-report-metadata.json"
-  },
-  [pscustomobject]@{
-    id = "neutral-project-dossier"
-    profile = "course-design-report"
-    report = "examples\cases\course-design-student-management\report.txt"
-    metadata = "examples\cases\course-design-student-management\metadata.json"
+  foreach ($example in @($exampleCatalog.examples)) {
+    $case = [ordered]@{
+      id = [string]$example.id
+      profile = [string]$example.profile
+      report = [string]$example.report
+      metadata = [string]$example.metadata
+    }
+    if ($null -ne $example.PSObject.Properties["imageSpecs"]) {
+      $case.imageSpecs = [string]$example.imageSpecs
+    }
+    [pscustomobject]$case
   }
 )
 

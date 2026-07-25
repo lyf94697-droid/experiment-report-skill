@@ -5,14 +5,14 @@
       "anchor": "P52",
       "section": "方案设计与实现",
       "caption": "图1 学生成绩管理系统总体架构",
-      "widthCm": 15.2
+      "widthCm": 15.8
     },
     {
       "path": ".\\examples\\cases\\course-design-student-management\\assets\\data-model.png",
       "anchor": "P55",
       "section": "方案设计与实现",
       "caption": "图2 学生、课程与成绩核心数据模型",
-      "widthCm": 15.2
+      "widthCm": 15.8
     },
     {
       "path": ".\\examples\\cases\\course-design-student-management\\assets\\student-management-ui.png",

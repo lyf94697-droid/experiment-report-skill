@@ -1,0 +1,16 @@
+{
+  "images": [
+    {
+      "path": ".\\examples\\template-examples\\neutral-review-panel-lab\\assets\\boundary-tests.png",
+      "section": "实验步骤",
+      "caption": "图1 成绩等级函数边界值测试设计",
+      "widthCm": 15.2
+    },
+    {
+      "path": ".\\examples\\template-examples\\neutral-review-panel-lab\\assets\\junit-console.png",
+      "section": "实验结果",
+      "caption": "图2 JUnit 回归测试与覆盖率结果",
+      "widthCm": 15.2
+    }
+  ]
+}
